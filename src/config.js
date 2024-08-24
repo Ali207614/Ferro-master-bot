@@ -1,0 +1,36 @@
+const TelegramAPi = require("node-telegram-bot-api");
+const mongoose = require('mongoose');
+require('dotenv').config();
+
+
+let token = process.env.token
+const conn_params = {
+    serverNode: process.env.server_node,
+    uid: process.env.uid,
+    pwd: process.env.password,
+};
+
+const db = process.env.db
+
+let bot = new TelegramAPi(token, {
+    polling: true,
+});
+
+
+const connectDB = async () => {
+    try {
+        await mongoose.connect(process.env.mongo_url);
+        console.log('MongoDBga ulanish muvaffaqiyatli amalga oshirildi');
+    } catch (err) {
+        console.error('MongoDBga ulanishda xatolik yuz berdi:', err);
+        process.exit(1);
+    }
+};
+
+let personalChatId = '561932032'
+
+
+let rolesList = ['Admin', 'Master', 'User']
+
+
+module.exports = { bot, personalChatId, conn_params, db, connectDB, rolesList }
