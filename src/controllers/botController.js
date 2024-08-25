@@ -1,11 +1,12 @@
 const { get } = require("lodash");
 let { bot, rolesList } = require("../config");
-const { infoUser, sendMessageHelper, updateCustom } = require("../helpers");
+const { infoUser, sendMessageHelper, updateCustom, updateUser } = require("../helpers");
 const { dataConfirmBtnEmp } = require("../keyboards/inline_keyboards");
 const { option, mainMenuByRoles } = require("../keyboards/keyboards");
 const { newUserInfo } = require("../keyboards/text");
 const User = require("../models/User");
 const { adminCallBack } = require("../modules/callback_query");
+const { adminBtn } = require("../modules/text");
 const b1Controller = require('./b1Controller')
 
 class botConroller {
@@ -17,7 +18,7 @@ class botConroller {
                 return
             }
             let btnTree = {
-                // ...firtBtnExecutor(), ...confirmativeBtn,
+                ...adminBtn,
             }
             let stepTree = {
                 // ...xorijiyXaridStep, ...mahalliyXaridStep, ...tolovHarajatStep, ...adminStep
@@ -37,15 +38,15 @@ class botConroller {
                 btnTree[msg.text] && get(user, "user_step", 0) >= 1
             ) {
                 let btnTreeList = [
-                    // firtBtnExecutor(), confirmativeBtn
+                    adminBtn
                 ]
                 let execute = btnTreeList.find(item => item[msg.text] && item[msg.text]?.middleware({ chat_id, msgText: msg.text }))
                 execute = execute ? execute[msg.text] : {}
                 if (await get(execute, 'middleware', () => { })({ chat_id, msgText: msg.text })) {
                     await execute?.selfExecuteFn ? await execute.selfExecuteFn({ chat_id }) : undefined
                     if (execute?.next) {
-                        let textBot = await execute?.next?.text({ chat_id, data })
-                        let btnBot = await execute?.next?.btn ? await execute?.next?.btn({ chat_id, data, msg }) : undefined
+                        let textBot = await execute?.next?.text({ chat_id })
+                        let btnBot = await execute?.next?.btn ? await execute?.next?.btn({ chat_id, msg }) : undefined
                         let botInfo = await execute?.next?.file ? bot.sendDocument(chat_id, await execute?.next?.file({ chat_id }), btnBot) :
                             sendMessageHelper(chat_id, textBot, btnBot)
                         let lastMessageId = await botInfo
@@ -71,6 +72,7 @@ class botConroller {
             }
         }
         catch (err) {
+            console.log(err, ' bu err text')
             throw new Error(err);
         }
     }
@@ -79,8 +81,8 @@ class botConroller {
         try {
             let user = await infoUser({ chat_id });
             if (get(user, 'confirmed') === false) {
-                // sendMessageHelper(chat_id, "Tasdiqlash uchun Adminga jo'natilgan", option)
-                // return
+                sendMessageHelper(chat_id, "Tasdiqlash uchun Adminga jo'natilgan", option)
+                return
             }
             let callbackTree = {
                 ...adminCallBack,
@@ -93,12 +95,12 @@ class botConroller {
                     let execute = callbackTreeList.find(item => item[data[0]] && item[data[0]]?.middleware({ chat_id, data, msgText: msg.text, id: get(msg, 'message.message_id', 0) }))
                     execute = execute ? execute[data[0]] : {}
                     if (get(execute, 'middleware', () => { })({ chat_id, data, msgText: msg.text, id: get(msg, 'message.message_id', 0) })) {
-                        await execute?.selfExecuteFn ? await execute.selfExecuteFn({ chat_id, data }) : undefined
+                        await execute?.selfExecuteFn ? await execute.selfExecuteFn({ chat_id, data, msg }) : undefined
                         if (execute?.next) {
                             let textBot = await execute?.next?.text({ chat_id, data })
                             let btnBot = await execute?.next?.btn ? await execute?.next?.btn({ chat_id, data, msg }) : undefined
 
-                            let botInfo = await execute?.next?.update ? bot.editMessageText(await execute?.next?.text({ chat_id, data }), { chat_id, message_id: +currentUser.lastMessageId, ...(await execute?.next?.btn ? await execute?.next?.btn({ chat_id, data, msg }) : undefined) }) : (await execute?.next?.file ? bot.sendDocument(chat_id, await execute?.next?.file({ chat_id, data }), await execute?.next?.btn ? await execute?.next?.btn({ chat_id, data, msg }) : undefined) :
+                            let botInfo = await execute?.next?.update ? bot.editMessageText(await execute?.next?.text({ chat_id, data }), { chat_id, message_id: +user.lastMessageId, ...(await execute?.next?.btn ? await execute?.next?.btn({ chat_id, data, msg }) : undefined) }) : (await execute?.next?.file ? bot.sendDocument(chat_id, await execute?.next?.file({ chat_id, data }), await execute?.next?.btn ? await execute?.next?.btn({ chat_id, data, msg }) : undefined) :
                                 sendMessageHelper(chat_id, textBot, btnBot))
                             let botId = await botInfo
                             updateUser(chat_id, { lastMessageId: botId.message_id })
@@ -154,7 +156,7 @@ class botConroller {
                 let listAdmin = []
                 for (let i = 0; i < admins.length; i++) {
                     let btn = await dataConfirmBtnEmp(chat_id, [{ name: '✅ Ha', id: `1#${chat_id}` }, { name: '❌ Bekor qilish', id: `2#${chat_id}` }], 2, 'confirmNewUser')
-                    let botId = await bot.sendMessage(561932032, newUserInfo(sap_user, newUser), {
+                    let botId = await bot.sendMessage(admins[i].chat_id, newUserInfo(sap_user, newUser), {
                         parse_mode: 'MarkdownV2',
                         ...btn
                     });

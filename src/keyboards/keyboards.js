@@ -25,19 +25,19 @@ const adminBtn = {
         keyboard: [
             [
                 {
-                    text: "Foydalanuvchilar",
+                    text: "Foydalanuvchilar 👥",
                 },
                 {
-                    text: "Testlar",
+                    text: "Test boshqaruvi 📋",
                 },
             ],
             [
                 {
-                    text: "Foydalanuvchini izlash",
+                    text: "Foydalanuvchini izlash 🔍",
                 },
 
                 {
-                    text: "Tasdiqlash login",
+                    text: "Kirish uchun tasdiqlash 📩",
                 },
             ],
         ],

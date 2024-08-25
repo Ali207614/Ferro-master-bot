@@ -31,6 +31,15 @@ let personalChatId = '561932032'
 
 
 let rolesList = ['Admin', 'Master', 'User']
+let emojiWithName = {
+    'Admin': `🗝️ Admin`,
+    'Master': `🛠️ Master`,
+    'User': `👤 User`
+}
+let emoji = {
+    'Admin': `🗝️`,
+    'Master': `🛠️`,
+    'User': `👤`
+}
 
-
-module.exports = { bot, personalChatId, conn_params, db, connectDB, rolesList }
+module.exports = { bot, personalChatId, conn_params, db, connectDB, rolesList, emojiWithName, emoji }

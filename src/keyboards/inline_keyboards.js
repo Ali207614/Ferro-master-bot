@@ -26,7 +26,7 @@ const dataConfirmBtnEmp = async (chat_id = '', list = [], count = 1, cbName = ''
     }
 
     let objCb = {
-        'group': 'paginationGroup',
+        'loginList': 'paginationConfirmLoginList',
         'category': 'paginationCategory',
     }
 
