@@ -6,6 +6,7 @@ const { option, mainMenuByRoles } = require("../keyboards/keyboards");
 const { newUserInfo } = require("../keyboards/text");
 const User = require("../models/User");
 const { adminCallBack } = require("../modules/callback_query");
+const { adminText } = require("../modules/step");
 const { adminBtn } = require("../modules/text");
 const b1Controller = require('./b1Controller')
 
@@ -21,7 +22,7 @@ class botConroller {
                 ...adminBtn,
             }
             let stepTree = {
-                // ...xorijiyXaridStep, ...mahalliyXaridStep, ...tolovHarajatStep, ...adminStep
+                ...adminText
             }
             if (msg.text == "/start") {
                 sendMessageHelper(

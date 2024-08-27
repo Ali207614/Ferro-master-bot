@@ -16,9 +16,34 @@ Do you confirm this information?
     return text
 }
 
+let deleteUserInfo = (newUser) => {
+    let text = `
+*📄 Name :* ${newUser.last_name} ${newUser.first_name}
+*💼 Job Title :* **${emojiWithName[newUser.job_title]}**
+*📱 Number :* ${newUser.mobile}
+*🕒 Registered At :* ${newUser.created_at ? new Date(newUser.created_at).toLocaleString() : 'N/A'}
+    
+Do you delete this information?
+    `;
+    return text
+}
+
+
 let updateUserInfo = (newUser, confirmed, admin) => {
     let text = `
 *${confirmed ? "Confirmed" : "Rejected"} by ${admin.last_name} ${admin.first_name} ${confirmed ? '✅' : '❌'}*
+
+*📄 Name :* ${newUser.last_name} ${newUser.first_name}
+*💼 Job Title :* **${emojiWithName[newUser.job_title]}**
+*📱 Number :* ${newUser.mobile}
+*🕒 Registered At :* ${newUser.created_at ? new Date(newUser.created_at).toLocaleString() : 'N/A'}`;
+    return text
+}
+
+
+let userDeleteInfo = (newUser, admin) => {
+    let text = `
+*Deleted by ${admin.last_name} ${admin.first_name} ✅*
 
 *📄 Name :* ${newUser.last_name} ${newUser.first_name}
 *💼 Job Title :* **${emojiWithName[newUser.job_title]}**
@@ -40,4 +65,4 @@ Do you confirm this information?
 }
 
 
-module.exports = { newUserInfo, updateUserInfo, confirmLoginText }
+module.exports = { newUserInfo, updateUserInfo, confirmLoginText, deleteUserInfo, userDeleteInfo }
