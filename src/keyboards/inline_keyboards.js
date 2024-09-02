@@ -29,11 +29,21 @@ const dataConfirmBtnEmp = async (chat_id = '', list = [], count = 1, cbName = ''
         'loginList': 'paginationConfirmLoginList',
         'userList': 'paginationUserList',
         'userListSearch': 'paginationUserListSearch',
+        'categoriesAdmin': "paginationCategoriesAdmin",
+        'productAdmin': "paginationProductAdmin"
     }
 
-    // let backCb = {
-    //     'category': 'backCategory'
-    // }
+    let backCb = {
+        'categoriesAdmin': {
+            text: `🔙 Katalogga qaytish`,
+            callback_data: 'backToCatalog'
+        },
+        'productAdmin': {
+            text: `🔙 Kategoriyaga qaytish`,
+            callback_data: 'backToCategory'
+        }
+    }
+
 
     if (result.length > 10) {
         let paginationBtn = [
@@ -43,14 +53,9 @@ const dataConfirmBtnEmp = async (chat_id = '', list = [], count = 1, cbName = ''
 
         arr.push(paginationBtn.filter(item => item))
     }
-    // if (['category'].includes(cbName)) {
-    //     arr.push([
-    //         {
-    //             text: '⬅️⬅️Tovar belgisiga qaytish',
-    //             callback_data: backCb[cbName]
-    //         }
-    //     ])
-    // }
+    if (Object.keys(backCb).includes(cbName)) {
+        arr.push([backCb[cbName]])
+    }
 
     let keyboard = {
         reply_markup: {

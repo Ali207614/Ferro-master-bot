@@ -5,7 +5,7 @@ const { dataConfirmBtnEmp } = require("../keyboards/inline_keyboards");
 const { option, mainMenuByRoles } = require("../keyboards/keyboards");
 const { newUserInfo } = require("../keyboards/text");
 const User = require("../models/User");
-const { adminCallBack } = require("../modules/callback_query");
+const { adminCallBack, adminTestManagement } = require("../modules/callback_query");
 const { adminText } = require("../modules/step");
 const { adminBtn } = require("../modules/text");
 const b1Controller = require('./b1Controller')
@@ -87,11 +87,13 @@ class botConroller {
             }
             let callbackTree = {
                 ...adminCallBack,
+                ...adminTestManagement
             }
             if (user) {
                 if (callbackTree[data[0]]) {
                     let callbackTreeList = [
                         adminCallBack,
+                        adminTestManagement
                     ]
                     let execute = callbackTreeList.find(item => item[data[0]] && item[data[0]]?.middleware({ chat_id, data, msgText: msg.text, id: get(msg, 'message.message_id', 0) }))
                     execute = execute ? execute[data[0]] : {}

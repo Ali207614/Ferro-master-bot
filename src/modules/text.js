@@ -1,7 +1,9 @@
 const { get } = require("lodash")
 const { emoji, rolesList, bot } = require("../config")
-const { infoUser, updateCustom, updateStep } = require("../helpers")
+const ferroController = require("../controllers/ferroController")
+const { infoUser, updateCustom, updateStep, sendMessageHelper } = require("../helpers")
 const { dataConfirmBtnEmp } = require("../keyboards/inline_keyboards")
+const Catalog = require("../models/Catalog")
 const User = require("../models/User")
 
 let adminBtn = {
@@ -62,6 +64,30 @@ let adminBtn = {
             btn: async ({ chat_id, data }) => {
                 return
             },
+        },
+    },
+    "Test boshqaruvi 📋": {
+        selfExecuteFn: async ({ chat_id }) => {
+            let catalog = await Catalog.find()
+            if (catalog.length == 0) {
+                let deleteMessage = await sendMessageHelper(chat_id, 'Loading...')
+                let newCatalog = await ferroController.getPageContent()
+                let data = get(newCatalog, 'components[0].component.categories', []).map(item => {
+                    return { ...item, ...item.category }
+                })
+                await Catalog.insertMany(data);
+                catalog = data
+                bot.deleteMessage(chat_id, deleteMessage.message_id)
+            }
+            let catalogBtn = catalog.map(item => {
+                return { name: get(item, 'name.textUzLat'), id: get(item, 'id') }
+            })
+            let btn = await dataConfirmBtnEmp(chat_id, catalogBtn, 1, 'catalogAdmin')
+            sendMessageHelper(chat_id, `Mahsulotlar katalogi 🔧`, btn)
+        },
+        middleware: async ({ chat_id }) => {
+            let user = await infoUser({ chat_id })
+            return get(user, 'job_title') == 'Admin' && get(user, 'confirmed')
         },
     },
 
