@@ -1,10 +1,36 @@
 const { get } = require("lodash")
-const { emoji, rolesList, bot } = require("../config")
+const { emoji, rolesList, bot, uncategorizedProduct } = require("../config")
 const ferroController = require("../controllers/ferroController")
-const { infoUser, updateCustom, updateStep, sendMessageHelper } = require("../helpers")
+const { infoUser, updateCustom, updateStep, sendMessageHelper, updateUser } = require("../helpers")
 const { dataConfirmBtnEmp } = require("../keyboards/inline_keyboards")
+const { mainMenuByRoles } = require("../keyboards/keyboards")
 const Catalog = require("../models/Catalog")
 const User = require("../models/User")
+
+let executeBtn = {
+    "Orqaga": {
+        selfExecuteFn: async ({ chat_id }) => {
+            let user = await infoUser({ chat_id })
+            updateStep(chat_id, get(user, `back[${user.back.length - 1}].step`, 1))
+        },
+        middleware: async ({ chat_id }) => {
+            let user = await infoUser({ chat_id })
+            return get(user, 'back', []).length
+        },
+        next: {
+            text: async ({ chat_id }) => {
+                let user = await infoUser({ chat_id })
+                return get(user, `back[${user.back.length - 1}].text`, 'Assalomu Aleykum')
+            },
+            btn: async ({ chat_id }) => {
+                let user = await infoUser({ chat_id })
+                let btnBack = get(user, `back[${user.back.length - 1}].btn`, await mainMenuByRoles({ chat_id }))
+                updateUser(chat_id, { back: get(user, 'back', []).filter((item, i) => i != user.back?.length - 1) })
+                return await btnBack
+            },
+        },
+    },
+}
 
 let adminBtn = {
     "Kirish uchun tasdiqlash 📩": {
@@ -81,8 +107,21 @@ let adminBtn = {
             }
             let catalogBtn = catalog.map(item => {
                 return { name: get(item, 'name.textUzLat'), id: get(item, 'id') }
-            })
-            let btn = await dataConfirmBtnEmp(chat_id, catalogBtn, 1, 'catalogAdmin')
+            }).filter(el => !uncategorizedProduct.includes(el.id))
+
+            let directProduct = catalog.map(item => {
+                return { name: get(item, 'name.textUzLat'), id: get(item, 'id') }
+            }).filter(el => uncategorizedProduct.includes(el.id))
+
+            let btnCatalog = await dataConfirmBtnEmp(chat_id, catalogBtn, 1, 'catalogAdmin')
+            let btnCategory = await dataConfirmBtnEmp(chat_id, directProduct, 1, 'categoriesAdmin')
+
+            let btn = {
+                reply_markup: {
+                    inline_keyboard: [...get(btnCatalog, 'reply_markup.inline_keyboard', []), ...get(btnCategory, 'reply_markup.inline_keyboard', [])].filter(item => item[0].callback_data != 'backToCatalog'),
+                    resize_keyboard: true
+                }
+            }
             sendMessageHelper(chat_id, `Mahsulotlar katalogi 🔧`, btn)
         },
         middleware: async ({ chat_id }) => {
@@ -93,4 +132,4 @@ let adminBtn = {
 
 }
 
-module.exports = { adminBtn }
+module.exports = { adminBtn, executeBtn }

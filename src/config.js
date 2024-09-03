@@ -42,4 +42,6 @@ let emoji = {
     'User': `👤`
 }
 
-module.exports = { bot, personalChatId, conn_params, db, connectDB, rolesList, emojiWithName, emoji }
+let uncategorizedProduct = [1003947, 1002442]
+
+module.exports = { bot, personalChatId, conn_params, db, connectDB, rolesList, emojiWithName, emoji, uncategorizedProduct }

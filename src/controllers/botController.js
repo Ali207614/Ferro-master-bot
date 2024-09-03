@@ -7,7 +7,7 @@ const { newUserInfo } = require("../keyboards/text");
 const User = require("../models/User");
 const { adminCallBack, adminTestManagement } = require("../modules/callback_query");
 const { adminText } = require("../modules/step");
-const { adminBtn } = require("../modules/text");
+const { adminBtn, executeBtn } = require("../modules/text");
 const b1Controller = require('./b1Controller')
 
 class botConroller {
@@ -20,6 +20,7 @@ class botConroller {
             }
             let btnTree = {
                 ...adminBtn,
+                ...executeBtn
             }
             let stepTree = {
                 ...adminText
@@ -39,7 +40,8 @@ class botConroller {
                 btnTree[msg.text] && get(user, "user_step", 0) >= 1
             ) {
                 let btnTreeList = [
-                    adminBtn
+                    adminBtn,
+                    executeBtn
                 ]
                 let execute = btnTreeList.find(item => item[msg.text] && item[msg.text]?.middleware({ chat_id, msgText: msg.text }))
                 execute = execute ? execute[msg.text] : {}
