@@ -106,6 +106,15 @@ function formatLocalDateToISOString(date) {
 }
 
 
+function validatePositiveInteger(input) {
+    const isValid = /^[1-9]\d*$/.test(input);
+
+    if (isValid) {
+        return true;
+    } else {
+        return false;
+    }
+}
 
 
 
@@ -119,5 +128,6 @@ module.exports = {
     updateBack,
     updateUser,
     updateCustom,
-    deleteUser
+    deleteUser,
+    validatePositiveInteger
 }

@@ -1,7 +1,7 @@
 const { get } = require("lodash")
 const { bot, rolesList, emoji, uncategorizedProduct } = require("../config")
 const ferroController = require("../controllers/ferroController")
-const { infoUser, updateUser, deleteUser, sendMessageHelper, updateCustom, updateBack } = require("../helpers")
+const { infoUser, updateUser, deleteUser, sendMessageHelper, updateCustom, updateBack, updateStep } = require("../helpers")
 const { empDynamicBtn } = require("../keyboards/function_keyboards")
 const { dataConfirmBtnEmp } = require("../keyboards/inline_keyboards")
 const { mainMenuByRoles, option } = require("../keyboards/keyboards")
@@ -9,6 +9,7 @@ const { updateUserInfo, newUserInfo, confirmLoginText, userDeleteInfo } = requir
 const Catalog = require("../models/Catalog")
 const Product = require("../models/Product")
 const User = require("../models/User")
+require('dotenv').config();
 
 
 let adminCallBack = {
@@ -519,14 +520,12 @@ let adminTestManagement = {
             let user = await infoUser({ chat_id })
             let categories = get(user, 'custom.categories', {})
             let subCategory = get(user, 'custom.subCategory', [])
-            console.log(subCategory)
             let text = `*🛠️ Kategoriyani tanlang*\n\n` +
                 `*🔍 Kategoriya joyi*: \`Katalog > ${get(categories, 'name.textUzLat', '')}\`\n\n` +
                 `Iltimos, quyidagi kategoriyalardan birini tanlang:`
             let categoriesBtn = subCategory.filter(item => !item.isDisabled).map(item => {
                 return { name: get(item, 'name.textUzLat', '-'), id: get(item, 'id') }
             })
-            console.log(categoriesBtn, ' bu btn ')
             let btn = await dataConfirmBtnEmp(chat_id, categoriesBtn, 2, 'categoriesAdmin')
             bot.editMessageText(text, {
                 chat_id: chat_id,
@@ -544,16 +543,40 @@ let adminTestManagement = {
     },
     productAdmin: {
         selfExecuteFn: async ({ chat_id, data, msg }) => {
-            let product = await Product.findOne({ 'id': data[1] })
-            updateBack(chat_id, { text: "Assalomu aleykum", btn: await mainMenuByRoles({ chat_id }), step: 10 })
-            let text = `🛒 Tanlangan Mahsulot: ${get(product, 'name.textUzLat', '')}\n\n💬 Bu mahsulot bilan qanday amallarni bajarmoqchisiz?
-            `
-            let btn = empDynamicBtn([`➕ Test qo'shish`, `✏️ O'zgartirish`, `🗑 O'chirish`], 2)
-            sendMessageHelper(chat_id, text, btn)
+            let user = await infoUser({ chat_id });
+            let deleteMessage = await sendMessageHelper(chat_id, 'Loading...')
+
+            let product = await Product.findOne({ 'id': data[1] });
+            let photoUrl = `${process.env.ferro_api}/file/thumbnail/square/1280/` + get(product, 'photos[0].photo.url', '');
+
+            updateBack(chat_id, { text: "Assalomu aleykum", btn: await mainMenuByRoles({ chat_id }), step: 1 });
+
+            let text = `🛒 Tanlangan Mahsulot: ${get(product, 'name.textUzLat', '')}\n\n💬 Bu mahsulot bilan qanday amallarni bajarmoqchisiz?`;
+            let btn = empDynamicBtn([`➕ Test qo'shish`, `✏️ O'zgartirish`, `🗑 O'chirish`], 2);
+
+            try {
+                await bot.deleteMessage(chat_id, user.custom.productMessageId);
+            } catch (error) {
+                console.error('Xabarni o\'chirishda xatolik:', error.message);
+            }
+
+            let updateId;
+            if (get(product, 'photos[0].photo.url', '')) {
+                updateId = await bot.sendPhoto(chat_id, photoUrl, {
+                    caption: text,
+                    ...btn
+                });
+            } else {
+                updateId = await sendMessageHelper(chat_id, text, btn);
+            }
+            bot.deleteMessage(chat_id, deleteMessage.message_id)
+
+            updateCustom(chat_id, { selectedProduct: { id: data[1] }, productMessageId: updateId.message_id });
+            updateStep(chat_id, 20);
         },
         middleware: async ({ chat_id, id }) => {
             let user = await infoUser({ chat_id })
-            return get(user, 'job_title') == 'Admin'
+            return get(user, 'job_title') == 'Admin' && !get(user, 'custom.in_process')
         },
     }
 

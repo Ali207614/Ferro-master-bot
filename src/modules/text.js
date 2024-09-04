@@ -1,7 +1,8 @@
 const { get } = require("lodash")
 const { emoji, rolesList, bot, uncategorizedProduct } = require("../config")
 const ferroController = require("../controllers/ferroController")
-const { infoUser, updateCustom, updateStep, sendMessageHelper, updateUser } = require("../helpers")
+const { infoUser, updateCustom, updateStep, sendMessageHelper, updateUser, updateBack } = require("../helpers")
+const { empDynamicBtn } = require("../keyboards/function_keyboards")
 const { dataConfirmBtnEmp } = require("../keyboards/inline_keyboards")
 const { mainMenuByRoles } = require("../keyboards/keyboards")
 const Catalog = require("../models/Catalog")
@@ -15,6 +16,9 @@ let executeBtn = {
         },
         middleware: async ({ chat_id }) => {
             let user = await infoUser({ chat_id })
+            if (get(user, 'back', []).length == 1) {
+                updateCustom(chat_id, { 'in_process': false })
+            }
             return get(user, 'back', []).length
         },
         next: {
@@ -25,7 +29,10 @@ let executeBtn = {
             btn: async ({ chat_id }) => {
                 let user = await infoUser({ chat_id })
                 let btnBack = get(user, `back[${user.back.length - 1}].btn`, await mainMenuByRoles({ chat_id }))
-                updateUser(chat_id, { back: get(user, 'back', []).filter((item, i) => i != user.back?.length - 1) })
+                updateUser(chat_id, {
+                    back: get(user, 'back', []).filter((item, i) => i != user.back?.length - 1),
+                    custom: { ...get(user, 'custom', {}), productMessageId: '' }
+                })
                 return await btnBack
             },
         },
@@ -129,7 +136,46 @@ let adminBtn = {
             return get(user, 'job_title') == 'Admin' && get(user, 'confirmed')
         },
     },
-
 }
 
-module.exports = { adminBtn, executeBtn }
+let adminTestManagementBtn = {
+    "Keyingi bosqichga o'tish ➡️": {
+        selfExecuteFn: async ({ chat_id }) => {
+            let user = await infoUser({ chat_id })
+            updateBack(chat_id, {
+                text: `Agar savolda rasm bo'lsa, rasmni yuboring 📸 yoki keyingi bosqichga o'ting`,
+                btn: empDynamicBtn([`Keyingi bosqichga o'tish ➡️`]),
+                step: 20
+            })
+            let text = `✏️ Savolingizni kiriting`
+            let btn = empDynamicBtn()
+            sendMessageHelper(chat_id, text, btn)
+            updateUser(chat_id, {
+                user_step: 22,
+                custom: { ...get(user, 'custom', {}) }
+            })
+        },
+        middleware: async ({ chat_id }) => {
+            let user = await infoUser({ chat_id })
+            return get(user, 'job_title') == 'Admin' && get(user, 'confirmed') && get(user, 'user_step') == 21
+        },
+    },
+    "➕ Test qo'shish": {
+        selfExecuteFn: async ({ chat_id }) => {
+            let user = await infoUser({ chat_id })
+            let text = `Agar savolda rasm bo'lsa, rasmni yuboring 📸 yoki keyingi bosqichga o'ting`
+            let btn = empDynamicBtn([`Keyingi bosqichga o'tish ➡️`])
+            sendMessageHelper(chat_id, text, btn)
+            updateUser(chat_id, {
+                user_step: 21,
+                custom: { ...get(user, 'custom', {}), productMessageId: '', in_process: true }
+            })
+        },
+        middleware: async ({ chat_id }) => {
+            let user = await infoUser({ chat_id })
+            return get(user, 'job_title') == 'Admin' && get(user, 'confirmed') && get(user, 'user_step') == 20
+        },
+    },
+}
+
+module.exports = { adminBtn, executeBtn, adminTestManagementBtn }

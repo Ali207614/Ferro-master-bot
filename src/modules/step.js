@@ -1,6 +1,7 @@
 const { get } = require("lodash");
 const { bot, rolesList, emoji } = require("../config");
-const { infoUser, sendMessageHelper, updateUser, updateCustom } = require("../helpers")
+const { infoUser, sendMessageHelper, updateUser, updateCustom, validatePositiveInteger, updateBack } = require("../helpers");
+const { empDynamicBtn } = require("../keyboards/function_keyboards");
 const { dataConfirmBtnEmp } = require("../keyboards/inline_keyboards");
 const User = require("../models/User");
 
@@ -37,4 +38,95 @@ let adminText = {
     },
 }
 
-module.exports = { adminText }
+let adminTestManagementStep = {
+    "22": {
+        selfExecuteFn: async ({ chat_id, msgText }) => {
+            let user = await infoUser({ chat_id })
+            updateBack(chat_id, {
+                text: `✏️ Savolingizni kiriting`,
+                btn: empDynamicBtn(),
+                step: 22
+            })
+            let text = `Javoblar soni nechta bo'ladi?`
+            let btn = empDynamicBtn()
+            sendMessageHelper(chat_id, text, btn)
+            updateUser(chat_id, {
+                user_step: 23,
+                custom: { ...get(user, 'custom', {}), selectedProduct: { ...get(user, 'custom.selectedProduct', {}), text: msgText } }
+            })
+        },
+        middleware: async ({ chat_id }) => {
+            let user = await infoUser({ chat_id })
+            return get(user, 'job_title') == 'Admin' && get(user, 'confirmed') && get(user, 'user_step') == 22 && get(user, 'custom.in_process')
+        },
+    },
+    "23": {
+        selfExecuteFn: async ({ chat_id, msgText }) => {
+            if (!validatePositiveInteger(msgText) || Number(msgText) < 0 || Number(msgText) > 10) {
+                let text = `❗️ Xatolik!\nJavoblar soni to'g'ri formatda bo'lishi kerak. Iltimos, faqat musbat butun son kiriting. Misol: 4`
+                sendMessageHelper(chat_id, text)
+                return
+            }
+
+            updateBack(chat_id, {
+                text: `Javoblar soni nechta bo'ladi?`,
+                btn: empDynamicBtn(),
+                step: 23
+            })
+            let user = await infoUser({ chat_id })
+            let text = `📝 1-ch xato javobni yozing`
+            let btn = empDynamicBtn()
+            sendMessageHelper(chat_id, text, btn)
+            updateUser(chat_id, {
+                user_step: 24,
+                custom: {
+                    ...get(user, 'custom', {}),
+                    selectedProduct: { ...get(user, 'custom.selectedProduct', {}), count: msgText }
+                }
+            })
+        },
+        middleware: async ({ chat_id }) => {
+            let user = await infoUser({ chat_id })
+            return get(user, 'job_title') == 'Admin' && get(user, 'confirmed') && get(user, 'user_step') == 23 && get(user, 'custom.in_process')
+        },
+    },
+}
+
+
+const handleAnswerManagement = async ({ chat_id }) => {
+    let user = await infoUser({ chat_id })
+    let obj = {}
+    for (let i = 24; i <= Number(get(user, 'custom.selectedProduct.count', '0')) + 22; i++) {
+        obj[i] = {
+            selfExecuteFn: async ({ chat_id, msgText }) => {
+                let newUser = await infoUser({ chat_id })
+
+                updateBack(chat_id, {
+                    text: `📝${i - 23}-ch xato javobni yozing`,
+                    btn: empDynamicBtn(),
+                    step: i - 1
+                })
+                let text = `📝${i - 22}-ch xato javobni yozing`
+                let btn = empDynamicBtn()
+                sendMessageHelper(chat_id, text, btn)
+                updateUser(chat_id, {
+                    user_step: i + 1,
+                    custom: {
+                        ...get(newUser, 'custom', {}),
+                        selectedProduct: {
+                            ...get(newUser, 'custom.selectedProduct', {}),
+                            listAnswers: [...get(newUser, 'custom.selectedProduct.listAnswers', []), msgText]
+                        },
+                    }
+                })
+            },
+            middleware: async ({ chat_id }) => {
+                let user = await infoUser({ chat_id })
+                return get(user, 'job_title') == 'Admin' && get(user, 'confirmed') && get(user, 'user_step') == i && get(user, 'custom.in_process')
+            },
+        }
+    }
+    return obj
+}
+
+module.exports = { adminText, adminTestManagementStep, handleAnswerManagement }

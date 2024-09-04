@@ -6,8 +6,8 @@ const { option, mainMenuByRoles } = require("../keyboards/keyboards");
 const { newUserInfo } = require("../keyboards/text");
 const User = require("../models/User");
 const { adminCallBack, adminTestManagement } = require("../modules/callback_query");
-const { adminText } = require("../modules/step");
-const { adminBtn, executeBtn } = require("../modules/text");
+const { adminText, adminTestManagementStep, handleAnswerManagement } = require("../modules/step");
+const { adminBtn, executeBtn, adminTestManagementBtn } = require("../modules/text");
 const b1Controller = require('./b1Controller')
 
 class botConroller {
@@ -18,12 +18,16 @@ class botConroller {
                 sendMessageHelper(chat_id, "Tasdiqlash uchun Adminga jo'natilgan", option)
                 return
             }
+            console.log(await handleAnswerManagement({ chat_id }))
             let btnTree = {
                 ...adminBtn,
-                ...executeBtn
+                ...executeBtn,
+                ...adminTestManagementBtn
             }
             let stepTree = {
-                ...adminText
+                ...adminText,
+                ...adminTestManagementStep,
+                ...await handleAnswerManagement({ chat_id })
             }
             if (msg.text == "/start") {
                 sendMessageHelper(
@@ -31,6 +35,7 @@ class botConroller {
                     "Assalomu Aleykum",
                     get(user, 'confirmed') ? await mainMenuByRoles({ chat_id }) : option
                 );
+                updateCustom(chat_id, { productMessageId: '', in_process: false })
                 return
             }
             else if (msg.text == '/info') {
@@ -41,9 +46,11 @@ class botConroller {
             ) {
                 let btnTreeList = [
                     adminBtn,
-                    executeBtn
+                    executeBtn,
+                    adminTestManagementBtn
                 ]
                 let execute = btnTreeList.find(item => item[msg.text] && item[msg.text]?.middleware({ chat_id, msgText: msg.text }))
+
                 execute = execute ? execute[msg.text] : {}
                 if (await get(execute, 'middleware', () => { })({ chat_id, msgText: msg.text })) {
                     await execute?.selfExecuteFn ? await execute.selfExecuteFn({ chat_id }) : undefined
@@ -99,7 +106,9 @@ class botConroller {
                     ]
                     let execute = callbackTreeList.find(item => item[data[0]] && item[data[0]]?.middleware({ chat_id, data, msgText: msg.text, id: get(msg, 'message.message_id', 0) }))
                     execute = execute ? execute[data[0]] : {}
-                    if (get(execute, 'middleware', () => { })({ chat_id, data, msgText: msg.text, id: get(msg, 'message.message_id', 0) })) {
+                    if (await get(execute, 'middleware', () => { })({ chat_id, data, msgText: msg.text, id: get(msg, 'message.message_id', 0) })) {
+
+                        console.log(await get(execute, 'middleware', () => { })({ chat_id, data, msgText: msg.text, id: get(msg, 'message.message_id', 0) }), ' bu middle')
                         await execute?.selfExecuteFn ? await execute.selfExecuteFn({ chat_id, data, msg }) : undefined
                         if (execute?.next) {
                             let textBot = await execute?.next?.text({ chat_id, data })
