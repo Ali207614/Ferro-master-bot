@@ -3,6 +3,7 @@ const { bot, rolesList, emoji } = require("../config");
 const { infoUser, sendMessageHelper, updateUser, updateCustom, validatePositiveInteger, updateBack } = require("../helpers");
 const { empDynamicBtn } = require("../keyboards/function_keyboards");
 const { dataConfirmBtnEmp } = require("../keyboards/inline_keyboards");
+const { confirmTestAdmin } = require("../keyboards/text");
 const User = require("../models/User");
 
 let adminText = {
@@ -133,7 +134,8 @@ const handleAnswerManagement = async ({ chat_id }) => {
                         ...get(newUser, 'custom.selectedProduct', {}),
                         listAnswers: { ...listAnswersObj, [i]: msgText },
                         correct: correctIndex + 1 == i ? msgText : '',
-                        chat_id
+                        chat_id,
+                        product: get(newUser, 'custom.product', []).find(item => item.id == get(newUser, 'custom.selectedProduct.id'))
                     })
                     return
                 }
@@ -149,39 +151,6 @@ const handleAnswerManagement = async ({ chat_id }) => {
     return obj
 }
 
-let confirmTestAdmin = ({ chat_id, id, text, count, listAnswers, correct }) => {
-    const answersText = Object.entries(listAnswers)
-        .map(([key, value], i) => `📍 ${i + 1}. ${value}`)
-        .join('\n');
 
-    // Tasdiqlash xabari (test bo'yicha)
-    const confirmationMessage = `
-📝 <b>Test haqida ma'lumot:</b>
-
-🔢 <b>ID:</b> ${id}
-❓ <b>Savol:</b> ${text}
-📊 <b>Umumiy javoblar soni:</b> ${count}
-
-📜 <b>Foydalanuvchi javoblari:</b>
-${answersText}
-
-✅ <b>To'g'ri javob:</b> ${correct}
-
-❓ Ushbu testni tasdiqlaysizmi?
-`;
-
-    // Tugmalar yaratish (tasdiqlash va bekor qilish)
-    const confirmationButtons = {
-        reply_markup: {
-            inline_keyboard: [
-                [{ text: "✅ Tasdiqlash", callback_data: "confirm_test" }, { text: "❌ Bekor qilish", callback_data: "cancel_test" }],
-            ]
-        },
-        parse_mode: 'HTML' // Xabar HTML formatida bo'lsin
-    };
-
-    // Xabarni jo'natish
-    bot.sendMessage(chat_id, confirmationMessage, confirmationButtons);
-}
 
 module.exports = { adminText, adminTestManagementStep, handleAnswerManagement }

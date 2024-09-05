@@ -5,9 +5,10 @@ const { infoUser, updateUser, deleteUser, sendMessageHelper, updateCustom, updat
 const { empDynamicBtn } = require("../keyboards/function_keyboards")
 const { dataConfirmBtnEmp } = require("../keyboards/inline_keyboards")
 const { mainMenuByRoles, option } = require("../keyboards/keyboards")
-const { updateUserInfo, newUserInfo, confirmLoginText, userDeleteInfo } = require("../keyboards/text")
+const { updateUserInfo, newUserInfo, confirmLoginText, userDeleteInfo, TestAdminInfo } = require("../keyboards/text")
 const Catalog = require("../models/Catalog")
 const Product = require("../models/Product")
+const Question = require("../models/Question")
 const User = require("../models/User")
 require('dotenv').config();
 
@@ -578,8 +579,76 @@ let adminTestManagement = {
             let user = await infoUser({ chat_id })
             return get(user, 'job_title') == 'Admin' && !get(user, 'custom.in_process')
         },
-    }
+    },
+    confirmTest: {
+        selfExecuteFn: async ({ chat_id, data, msg }) => {
+            let user = await infoUser({ chat_id });
+            if (data[1] == 1) {
+                let { id, text, count, listAnswers, correct } = get(user, 'custom.selectedProduct', {});
 
+                // Ma'lumotlar yetarli ekanligini tekshirish
+                if (!id || !text || !count || Object.keys(listAnswers).length == 0 || !correct) {
+                    let text = `❗️ Xatolik!\nMa'lumotlar yetarli emas (Savol, Javoblar etc...)`;
+                    sendMessageHelper(chat_id, text);
+                    return;
+                }
+
+                // Mahsulotni olish
+                let product = await Product.findOne({ 'id': id });
+                if (!product) {
+                    let text = `❗️ Xatolik!\nMahsulot topilmadi!`;
+                    sendMessageHelper(chat_id, text);
+                    return;
+                }
+
+                // Javoblarni array formatiga aylantirish
+                let answers = Object.keys(listAnswers).map(key => listAnswers[key]);
+
+                try {
+                    // Yangi savol yaratish
+                    let question = new Question({
+                        productId: product._id, // Mahsulot ID'si
+                        name: {
+                            id: product.id,
+                            textUzLat: product.name.textUzLat,
+                            textUzCyr: product.name.textUzCyr,
+                            textRu: product.name.textRu
+                        },
+                        category: product.category, // Mahsulotning categoriyasi (bosqich)
+                        answerText: text, // Savol matni
+                        answers: answers, // Foydalanuvchi kiritgan javoblar
+                        correct: correct, // To'g'ri javob
+                        createdByChatId: chat_id, // Savolni yaratgan foydalanuvchi
+                        createdAt: Date.now(),
+                    });
+
+                    // Savolni saqlash
+                    await question.save();
+
+                    // Javob berish
+                    let createdBy = `${get(user, 'last_name', '-')} ${get(user, 'first_name')}`
+                    let textMessage = TestAdminInfo({ chat_id, text, count, listAnswers, correct, product: question, createdBy })
+                    bot.editMessageText(textMessage, {
+                        chat_id: chat_id,
+                        message_id: get(msg, 'message.message_id'),
+                        parse_mode: 'HTML',
+                    })
+                    // Foydalanuvchi ma'lumotlarini yangilash
+                    updateCustom(chat_id, { selectedProduct: {} });
+                } catch (error) {
+                    let text = `❗️ Xatolik!\nSavolni qo'shishda muammo yuzaga keldi: ${error.message}`;
+                    sendMessageHelper(chat_id, text);
+                }
+            } else {
+                updateCustom(chat_id, { selectedProduct: {} });
+            }
+
+        },
+        middleware: async ({ chat_id, id }) => {
+            let user = await infoUser({ chat_id })
+            return get(user, 'job_title') == 'Admin' && get(user, 'custom.in_process') && get(user, 'custom.selectedProduct.id')
+        },
+    }
 
 }
 

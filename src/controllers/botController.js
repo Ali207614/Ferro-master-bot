@@ -39,7 +39,8 @@ class botConroller {
                     custom: {
                         ...get(user, 'custom', {}),
                         productMessageId: '',
-                        in_process: false
+                        in_process: false,
+                        selectedProduct: {}
                     }
                 })
                 return
@@ -114,7 +115,6 @@ class botConroller {
                     execute = execute ? execute[data[0]] : {}
                     if (await get(execute, 'middleware', () => { })({ chat_id, data, msgText: msg.text, id: get(msg, 'message.message_id', 0) })) {
 
-                        console.log(await get(execute, 'middleware', () => { })({ chat_id, data, msgText: msg.text, id: get(msg, 'message.message_id', 0) }), ' bu middle')
                         await execute?.selfExecuteFn ? await execute.selfExecuteFn({ chat_id, data, msg }) : undefined
                         if (execute?.next) {
                             let textBot = await execute?.next?.text({ chat_id, data })
