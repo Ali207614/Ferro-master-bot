@@ -96,29 +96,49 @@ let adminTestManagementStep = {
 const handleAnswerManagement = async ({ chat_id }) => {
     let user = await infoUser({ chat_id })
     let obj = {}
-    for (let i = 24; i <= Number(get(user, 'custom.selectedProduct.count', '0')) + 22; i++) {
+    for (let i = 24; i <= Number(get(user, 'custom.selectedProduct.count', '0')) + 23; i++) {
+        let correctIndex = Number(get(user, 'custom.selectedProduct.count', '0')) + 22
+        let lastIndex = correctIndex + 1
         obj[i] = {
             selfExecuteFn: async ({ chat_id, msgText }) => {
                 let newUser = await infoUser({ chat_id })
+                let listAnswersObj = get(newUser, 'custom.selectedProduct.listAnswers', {})
+                let questionText = correctIndex + 1 == i ? `✅${i - 23}-ch to'gri javobni yozing` : `📝${i - 23}-ch xato javobni yozing`
+                if (listAnswersObj[i] != msgText && Object.values(listAnswersObj).includes(msgText)) {
+                    let text = `❗️ Xatolik!\nJavoblar bir xil bo'lmasligi kerak.\n\nQaytadan ${questionText}`
+                    sendMessageHelper(chat_id, text)
 
+                    return
+                }
                 updateBack(chat_id, {
-                    text: `📝${i - 23}-ch xato javobni yozing`,
+                    text: questionText,
                     btn: empDynamicBtn(),
-                    step: i - 1
+                    step: i
                 })
-                let text = `📝${i - 22}-ch xato javobni yozing`
+                let text = correctIndex == i ? `✅${i - 22}-ch to'gri javobni yozing` : `📝${i - 22}-ch xato javobni yozing`
                 let btn = empDynamicBtn()
-                sendMessageHelper(chat_id, text, btn)
                 updateUser(chat_id, {
                     user_step: i + 1,
                     custom: {
                         ...get(newUser, 'custom', {}),
                         selectedProduct: {
                             ...get(newUser, 'custom.selectedProduct', {}),
-                            listAnswers: [...get(newUser, 'custom.selectedProduct.listAnswers', []), msgText]
+                            listAnswers: { ...listAnswersObj, [i]: msgText },
+                            correct: correctIndex + 1 == i ? msgText : ''
                         },
                     }
                 })
+                if (lastIndex == i) {
+                    confirmTestAdmin({
+                        ...get(newUser, 'custom.selectedProduct', {}),
+                        listAnswers: { ...listAnswersObj, [i]: msgText },
+                        correct: correctIndex + 1 == i ? msgText : '',
+                        chat_id
+                    })
+                    return
+                }
+                sendMessageHelper(chat_id, text, btn)
+                return
             },
             middleware: async ({ chat_id }) => {
                 let user = await infoUser({ chat_id })
@@ -127,6 +147,41 @@ const handleAnswerManagement = async ({ chat_id }) => {
         }
     }
     return obj
+}
+
+let confirmTestAdmin = ({ chat_id, id, text, count, listAnswers, correct }) => {
+    const answersText = Object.entries(listAnswers)
+        .map(([key, value], i) => `📍 ${i + 1}. ${value}`)
+        .join('\n');
+
+    // Tasdiqlash xabari (test bo'yicha)
+    const confirmationMessage = `
+📝 <b>Test haqida ma'lumot:</b>
+
+🔢 <b>ID:</b> ${id}
+❓ <b>Savol:</b> ${text}
+📊 <b>Umumiy javoblar soni:</b> ${count}
+
+📜 <b>Foydalanuvchi javoblari:</b>
+${answersText}
+
+✅ <b>To'g'ri javob:</b> ${correct}
+
+❓ Ushbu testni tasdiqlaysizmi?
+`;
+
+    // Tugmalar yaratish (tasdiqlash va bekor qilish)
+    const confirmationButtons = {
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: "✅ Tasdiqlash", callback_data: "confirm_test" }, { text: "❌ Bekor qilish", callback_data: "cancel_test" }],
+            ]
+        },
+        parse_mode: 'HTML' // Xabar HTML formatida bo'lsin
+    };
+
+    // Xabarni jo'natish
+    bot.sendMessage(chat_id, confirmationMessage, confirmationButtons);
 }
 
 module.exports = { adminText, adminTestManagementStep, handleAnswerManagement }

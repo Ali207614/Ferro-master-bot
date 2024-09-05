@@ -18,7 +18,6 @@ class botConroller {
                 sendMessageHelper(chat_id, "Tasdiqlash uchun Adminga jo'natilgan", option)
                 return
             }
-            console.log(await handleAnswerManagement({ chat_id }))
             let btnTree = {
                 ...adminBtn,
                 ...executeBtn,
@@ -35,7 +34,14 @@ class botConroller {
                     "Assalomu Aleykum",
                     get(user, 'confirmed') ? await mainMenuByRoles({ chat_id }) : option
                 );
-                updateCustom(chat_id, { productMessageId: '', in_process: false })
+                updateUser(chat_id, {
+                    back: [],
+                    custom: {
+                        ...get(user, 'custom', {}),
+                        productMessageId: '',
+                        in_process: false
+                    }
+                })
                 return
             }
             else if (msg.text == '/info') {
