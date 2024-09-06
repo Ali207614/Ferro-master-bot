@@ -1,6 +1,7 @@
 const { get } = require("lodash");
 let { bot, rolesList } = require("../config");
 const { infoUser, sendMessageHelper, updateCustom, updateUser } = require("../helpers");
+const { empDynamicBtn } = require("../keyboards/function_keyboards");
 const { dataConfirmBtnEmp } = require("../keyboards/inline_keyboards");
 const { option, mainMenuByRoles } = require("../keyboards/keyboards");
 const { newUserInfo } = require("../keyboards/text");
@@ -198,6 +199,23 @@ class botConroller {
 
                 sendMessageHelper(chat_id, "Foydalanuvchi tasdiqlanmadi (SAP da mavjud emas yokida raqamlar ikkita) ❌", option);
                 return
+            }
+        } catch (err) {
+            throw new Error(err);
+        }
+    }
+
+    async photo(msg, chat_id) {
+        try {
+            let user = await infoUser({ chat_id })
+            if (get(user, 'job_title') == 'Admin' && get(user, 'confirmed') && get(user, 'user_step') == 21) {
+                let text = `✏️ Savolingizni kiriting`
+                let btn = empDynamicBtn()
+                sendMessageHelper(chat_id, text, btn)
+                updateUser(chat_id, {
+                    user_step: 22,
+                    custom: { ...get(user, 'custom', {}), selectedProduct: { ...get(user, 'custom.selectedProduct', {}), photo: get(msg, 'photo') } }
+                })
             }
         } catch (err) {
             throw new Error(err);

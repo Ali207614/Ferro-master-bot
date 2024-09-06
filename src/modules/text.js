@@ -176,6 +176,16 @@ let adminTestManagementBtn = {
             return get(user, 'job_title') == 'Admin' && get(user, 'confirmed') && get(user, 'user_step') == 20
         },
     },
+    "✏️ O'zgartirish": {
+        selfExecuteFn: async ({ chat_id }) => {
+            let user = await infoUser({ chat_id })
+
+        },
+        middleware: async ({ chat_id }) => {
+            let user = await infoUser({ chat_id })
+            return get(user, 'job_title') == 'Admin' && get(user, 'confirmed') && get(user, 'user_step') == 20
+        },
+    },
 }
 
 module.exports = { adminBtn, executeBtn, adminTestManagementBtn }

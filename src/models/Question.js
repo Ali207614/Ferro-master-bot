@@ -38,6 +38,7 @@ const QuestionSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    photo: [mongoose.Schema.Types.Mixed],
     name: {
         id: { type: Number, required: true },
         textUzLat: { type: String, required: true },

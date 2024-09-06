@@ -46,6 +46,15 @@ const start = async () => {
                         bot.sendMessage(personalChatId, `${err} err contact`);
                     }
                 });
+
+                bot.on("photo", async (msg) => {
+                    try {
+                        let chat_id = msg.chat.id;
+                        await botController.photo(msg, chat_id)
+                    } catch (err) {
+                        sendMessageHelper(personalChatId, `${err} err file`);
+                    }
+                });
             }
         });
         global.connection = connection;

@@ -67,7 +67,7 @@ Do you confirm this information?
 
 
 
-let confirmTestAdmin = ({ chat_id, id, text, count, listAnswers, correct, product }) => {
+let confirmTestAdmin = ({ chat_id, id, text, count, listAnswers, correct, product, photo }) => {
     const answersText = Object.entries(listAnswers)
         .map(([key, value], i) => `📍 ${i + 1}. ${value}`)
         .join('\n');
@@ -98,8 +98,16 @@ ${answersText}
         parse_mode: 'HTML'
     };
 
-    // Xabarni jo'natish
-    bot.sendMessage(chat_id, confirmationMessage, confirmationButtons);
+    if (photo?.length) {
+        // Agar rasm bo'lsa, xabarni rasm bilan jo'natish
+        bot.sendPhoto(chat_id, get(photo, `[0].file_id`), {
+            caption: confirmationMessage,
+            ...confirmationButtons
+        });
+    } else {
+        // Agar rasm bo'lmasa, oddiy xabarni jo'natish
+        bot.sendMessage(chat_id, confirmationMessage, confirmationButtons);
+    }
 }
 
 let TestAdminInfo = ({ chat_id, text, count, listAnswers, correct, product, createdBy }) => {

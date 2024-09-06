@@ -4,7 +4,7 @@ const ferroController = require("../controllers/ferroController")
 const { infoUser, updateUser, deleteUser, sendMessageHelper, updateCustom, updateBack, updateStep } = require("../helpers")
 const { empDynamicBtn } = require("../keyboards/function_keyboards")
 const { dataConfirmBtnEmp } = require("../keyboards/inline_keyboards")
-const { mainMenuByRoles, option } = require("../keyboards/keyboards")
+const { mainMenuByRoles, option, adminBtn } = require("../keyboards/keyboards")
 const { updateUserInfo, newUserInfo, confirmLoginText, userDeleteInfo, TestAdminInfo } = require("../keyboards/text")
 const Catalog = require("../models/Catalog")
 const Product = require("../models/Product")
@@ -395,9 +395,6 @@ let adminTestManagement = {
                 ...btn
             })
             let newParent = get(product, '[0].category.parent', {})
-            let oldCategories = get(user, 'custom.categories', {})
-
-
             updateCustom(chat_id, {
                 product,
                 categories: newParent
@@ -608,6 +605,7 @@ let adminTestManagement = {
                     // Yangi savol yaratish
                     let question = new Question({
                         productId: product._id, // Mahsulot ID'si
+                        photo: get(user, 'custom.selectedProduct.photo'),
                         name: {
                             id: product.id,
                             textUzLat: product.name.textUzLat,
@@ -628,19 +626,59 @@ let adminTestManagement = {
                     // Javob berish
                     let createdBy = `${get(user, 'last_name', '-')} ${get(user, 'first_name')}`
                     let textMessage = TestAdminInfo({ chat_id, text, count, listAnswers, correct, product: question, createdBy })
-                    bot.editMessageText(textMessage, {
+
+                    bot.editMessageCaption(textMessage, {
                         chat_id: chat_id,
                         message_id: get(msg, 'message.message_id'),
                         parse_mode: 'HTML',
-                    })
+                    });
+
+
+                    bot.sendMessage(chat_id, 'Assalomu Aleykum', await mainMenuByRoles({ chat_id }))
                     // Foydalanuvchi ma'lumotlarini yangilash
-                    updateCustom(chat_id, { selectedProduct: {} });
+                    updateUser(chat_id, {
+                        custom: {
+                            ...get(user, 'custom', {}),
+                            selectedProduct: {},
+                            in_process: false
+                        },
+                        back: []
+                    })
+
+                    let categories = get(user, 'custom.categories', [])
+                    let productList = get(user, 'custom.product', [])
+                    let textCatalog = `*🛠️ Mahsulotni tanlang*\n\n` +
+                        `*🔍 Mahsulot joyi*: \`Katalog > ${get(categories, 'name.textUzLat', '')} > ${get(productList, '[0].category.name.textUzLat')}\`\n\n` +
+                        `Iltimos, quyidagi mahsulotlardan birini tanlang:`
+
+                    let productBtn = productList.filter(item => !item.isDisabled).map(item => {
+                        return { name: get(item, 'name.textUzLat', '-'), id: get(item, 'id') }
+                    })
+
+                    let btnCatalog = await dataConfirmBtnEmp(chat_id, productBtn, 2, 'productAdmin')
+                    if (uncategorizedProduct.includes(Number(get(productList, '[0].category.id', '0')))) {
+                        btnCatalog.reply_markup.inline_keyboard = [...btnCatalog.reply_markup.inline_keyboard.filter(item => item[0].callback_data != 'backToCategory'), [{
+                            text: `🔙 Katalogga qaytish`,
+                            callback_data: 'backToCatalog'
+                        }]]
+                    }
+
+                    sendMessageHelper(chat_id, textCatalog, btnCatalog)
+                    return
+
                 } catch (error) {
                     let text = `❗️ Xatolik!\nSavolni qo'shishda muammo yuzaga keldi: ${error.message}`;
                     sendMessageHelper(chat_id, text);
                 }
             } else {
-                updateCustom(chat_id, { selectedProduct: {} });
+                updateUser(chat_id, {
+                    custom: {
+                        ...get(user, 'custom', {}),
+                        selectedProduct: {},
+                        in_process: false
+                    },
+                    back: []
+                })
             }
 
         },
