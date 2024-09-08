@@ -34,6 +34,7 @@ const CategorySchema = new Schema({
 });
 
 const QuestionSchema = new mongoose.Schema({
+    chat_id: { type: Number },
     productId: {
         type: String,
         required: true

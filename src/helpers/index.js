@@ -1,9 +1,12 @@
 const fs = require("fs");
 const { get } = require("lodash");
 const path = require("path");
-const { bot } = require("../config");
+const { bot, uncategorizedProduct } = require("../config");
 const User = require("../models/User");
 const moment = require('moment');
+const Question = require("../models/Question");
+const { empDynamicBtn } = require("../keyboards/function_keyboards");
+const { dataConfirmBtnEmp } = require("../keyboards/inline_keyboards");
 
 
 
@@ -29,7 +32,7 @@ function formatterCurrency(
 
 
 
-async function infoUser({ chat_id }) {
+const infoUser = async ({ chat_id }) => {
     return await User.findOne({ chat_id })
 }
 async function deleteUser({ chat_id }) {
@@ -55,7 +58,7 @@ async function updateStep(chat_id = '', user_step = 1) {
 }
 
 
-async function updateUser(chat_id, userData) {
+const updateUser = async (chat_id, userData) => {
     let user = await User.findOne({ chat_id })
     Object.assign(user, userData)
     await user.save({ validateBeforeSave: false })
@@ -65,6 +68,13 @@ async function updateCustom(chat_id, data) {
     let user = await User.findOne({ chat_id })
     Object.assign(user, { custom: { ...get(user, 'custom', {}), ...data } })
     await user.save({ validateBeforeSave: false })
+}
+
+async function updateQuestion(id, data) {
+    let question = await Question.findOne({ id })
+    Object.assign(question, { ...data })
+    console.log()
+    await question.save({ validateBeforeSave: false })
 }
 
 function parseDate(dateStr) {
@@ -105,6 +115,26 @@ function formatLocalDateToISOString(date) {
     return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${milliseconds}${offsetSign}${offsetHours}:${offsetMinutes}`;
 }
 
+let executeUpdateFn = (key) => {
+    let obj = {
+        "updatePicture": {
+            step: 21,
+            text: `Yangi rasmni yuboring 📸`,
+        },
+        "updateAnswerText": {
+            step: 22,
+            text: '✏️ Savolingizni kiriting',
+            btn: empDynamicBtn()
+        },
+        "updateAnswerList": {
+            step: 23,
+            text: `Javoblar soni nechta bo'ladi?`,
+            btn: empDynamicBtn()
+        },
+    }
+    return obj[key]
+}
+
 
 function validatePositiveInteger(input) {
     const isValid = /^[1-9]\d*$/.test(input);
@@ -117,6 +147,35 @@ function validatePositiveInteger(input) {
 }
 
 
+let updateThenFn = async (id) => {
+    let question = await Question.findOne({ id })
+    let chat_id = get(question, "chat_id")
+    let user = await User.findOne({ chat_id })
+    if (user) {
+        let categories = get(user, 'custom.categories', [])
+        let productList = get(user, 'custom.product', [])
+        let textCatalog = `*🛠️ Mahsulotni tanlang*\n\n` +
+            `*🔍 Mahsulot joyi*: \`Katalog > ${get(categories, 'name.textUzLat', '')} > ${get(productList, '[0].category.name.textUzLat')}\`\n\n` +
+            `Iltimos, quyidagi mahsulotlardan birini tanlang:`
+
+        let productBtn = productList.filter(item => !item.isDisabled).map(item => {
+            return { name: get(item, 'name.textUzLat', '-'), id: get(item, 'id') }
+        })
+
+        let btnCatalog = await dataConfirmBtnEmp(chat_id, productBtn, 2, 'productAdmin')
+        if (uncategorizedProduct.includes(Number(get(productList, '[0].category.id', '0')))) {
+            btnCatalog.reply_markup.inline_keyboard = [...btnCatalog.reply_markup.inline_keyboard.filter(item => item[0].callback_data != 'backToCategory'), [{
+                text: `🔙 Katalogga qaytish`,
+                callback_data: 'backToCatalog'
+            }]]
+        }
+
+        sendMessageHelper(chat_id, textCatalog, { ...btnCatalog, parse_mode: 'MarkdownV2' })
+    }
+
+}
+const sleepNow = (delay) =>
+    new Promise((resolve) => setTimeout(resolve, delay));
 
 module.exports = {
     parseDate,
@@ -129,5 +188,9 @@ module.exports = {
     updateUser,
     updateCustom,
     deleteUser,
-    validatePositiveInteger
+    validatePositiveInteger,
+    executeUpdateFn,
+    updateQuestion,
+    updateThenFn,
+    sleepNow
 }

@@ -1,11 +1,11 @@
 const { get } = require("lodash")
 const { bot, rolesList, emoji, uncategorizedProduct } = require("../config")
 const ferroController = require("../controllers/ferroController")
-const { infoUser, updateUser, deleteUser, sendMessageHelper, updateCustom, updateBack, updateStep } = require("../helpers")
+const { infoUser, updateUser, deleteUser, sendMessageHelper, updateCustom, updateBack, updateStep, executeUpdateFn, updateThenFn, sleepNow, updateQuestion } = require("../helpers")
 const { empDynamicBtn } = require("../keyboards/function_keyboards")
 const { dataConfirmBtnEmp } = require("../keyboards/inline_keyboards")
 const { mainMenuByRoles, option, adminBtn } = require("../keyboards/keyboards")
-const { updateUserInfo, newUserInfo, confirmLoginText, userDeleteInfo, TestAdminInfo } = require("../keyboards/text")
+const { updateUserInfo, newUserInfo, confirmLoginText, userDeleteInfo, TestAdminInfo, TestInfo } = require("../keyboards/text")
 const Catalog = require("../models/Catalog")
 const Product = require("../models/Product")
 const Question = require("../models/Question")
@@ -604,7 +604,8 @@ let adminTestManagement = {
                 try {
                     // Yangi savol yaratish
                     let question = new Question({
-                        productId: product._id, // Mahsulot ID'si
+                        chat_id,
+                        productId: product.id, // Mahsulot ID'si
                         photo: get(user, 'custom.selectedProduct.photo'),
                         name: {
                             id: product.id,
@@ -636,6 +637,9 @@ let adminTestManagement = {
 
                     bot.sendMessage(chat_id, 'Assalomu Aleykum', await mainMenuByRoles({ chat_id }))
                     // Foydalanuvchi ma'lumotlarini yangilash
+
+                    await sleepNow(300)
+
                     updateUser(chat_id, {
                         custom: {
                             ...get(user, 'custom', {}),
@@ -644,6 +648,7 @@ let adminTestManagement = {
                         },
                         back: []
                     })
+
 
                     let categories = get(user, 'custom.categories', [])
                     let productList = get(user, 'custom.product', [])
@@ -663,7 +668,8 @@ let adminTestManagement = {
                         }]]
                     }
 
-                    sendMessageHelper(chat_id, textCatalog, btnCatalog)
+                    sendMessageHelper(chat_id, textCatalog, { ...btnCatalog, parse_mode: 'MarkdownV2' })
+
                     return
 
                 } catch (error) {
@@ -679,6 +685,27 @@ let adminTestManagement = {
                     },
                     back: []
                 })
+                bot.deleteMessage(chat_id, get(msg, 'message.message_id'),)
+                bot.sendMessage(chat_id, `✅ Bekor qilindi`, await mainMenuByRoles({ chat_id }))
+                let categories = get(user, 'custom.categories', [])
+                let productList = get(user, 'custom.product', [])
+                let textCatalog = `*🛠️ Mahsulotni tanlang*\n\n` +
+                    `*🔍 Mahsulot joyi*: \`Katalog > ${get(categories, 'name.textUzLat', '')} > ${get(productList, '[0].category.name.textUzLat')}\`\n\n` +
+                    `Iltimos, quyidagi mahsulotlardan birini tanlang:`
+
+                let productBtn = productList.filter(item => !item.isDisabled).map(item => {
+                    return { name: get(item, 'name.textUzLat', '-'), id: get(item, 'id') }
+                })
+
+                let btnCatalog = await dataConfirmBtnEmp(chat_id, productBtn, 2, 'productAdmin')
+                if (uncategorizedProduct.includes(Number(get(productList, '[0].category.id', '0')))) {
+                    btnCatalog.reply_markup.inline_keyboard = [...btnCatalog.reply_markup.inline_keyboard.filter(item => item[0].callback_data != 'backToCategory'), [{
+                        text: `🔙 Katalogga qaytish`,
+                        callback_data: 'backToCatalog'
+                    }]]
+                }
+
+                sendMessageHelper(chat_id, textCatalog, { ...btnCatalog, parse_mode: 'MarkdownV2' })
             }
 
         },
@@ -686,11 +713,211 @@ let adminTestManagement = {
             let user = await infoUser({ chat_id })
             return get(user, 'job_title') == 'Admin' && get(user, 'custom.in_process') && get(user, 'custom.selectedProduct.id')
         },
+    },
+    updateList: {
+        selfExecuteFn: async ({ chat_id, data, msg }) => {
+            let user = await infoUser({ chat_id });
+
+            let question = await Question.findOne({ isDeleted: false, id: data[1] })
+            if (question.length == 0) {
+                sendMessageHelper(chat_id, 'Mavjud emas')
+                return
+            }
+            let btn = await dataConfirmBtnEmp(chat_id, [
+                { name: `📸 Rasm o'zgartirish`, id: `updatePicture#${question.id}` },
+                { name: `❓ Savol`, id: `updateAnswerText#${question.id}` },
+                { name: `✅ Javoblar`, id: `updateAnswerList#${question.id}` },
+                { name: `🗑️ Rasmni o'chirish`, id: `deletePicture#${question.id}` },
+                { name: `❌ Bekor qilish`, id: `remove#${question.id}` },
+            ], 2, 'updateTest')
+            let createUser = await infoUser({ chat_id: get(question, 'chat_id') })
+            let createdBy = `${get(createUser, 'last_name', '-')} ${get(createUser, 'first_name')}`
+
+            let text = TestAdminInfo({
+                text: get(question, 'answerText', ''),
+                count: get(question, 'answers', []).length,
+                listAnswers: get(question, 'answers', []),
+                correct: get(question, 'correct'),
+                product: question,
+                createdBy,
+                status: true
+            })
+            let photo = get(question, 'photo', [])
+
+            if (photo?.length) {
+                try {
+                    await bot.sendPhoto(chat_id, get(photo, `[0].file_id`), {
+                        caption: text,
+                        parse_mode: 'HTML',
+                        ...btn
+                    });
+                }
+                catch (e) {
+                    bot.sendMessage(chat_id, text, { ...btn, parse_mode: 'HTML' });
+                }
+            } else {
+                bot.sendMessage(chat_id, text, { ...btn, parse_mode: 'HTML' });
+            }
+
+        },
+        middleware: async ({ chat_id, id }) => {
+            let user = await infoUser({ chat_id })
+            return get(user, 'job_title') == 'Admin' && get(user, 'confirmed') && get(user, 'user_step') == 20
+        },
     }
 
 }
 
+let updateTestCallBack = {
+    updateTest: {
+        selfExecuteFn: async ({ chat_id, data, msg }) => {
+            let user = await infoUser({ chat_id })
+
+            let obj = executeUpdateFn(data[1])
+            if (data[1] == 'deletePicture') {
+                await updateQuestion(data[2], { photo: [] })
+                sendMessageHelper(chat_id, `✅ O'zgartirildi`, await mainMenuByRoles({ chat_id }))
+            }
+            else if (data[1] == 'remove') {
+                bot.deleteMessage(chat_id, msg.message.message_id)
+                return
+            }
+            else if (obj) {
+                updateUser(chat_id,
+                    {
+                        user_step: obj.step,
+                        custom: {
+                            ...get(user, 'custom'),
+                            updateId: data[2],
+                            in_process: true
+                        }
+                    }
+                )
+                let text = obj?.text
+                let btn = obj?.btn
+                bot.sendMessage(chat_id, text, btn)
+                return
+            }
+            await sleepNow(300)
+
+            updateThenFn(data[2])
+        },
+        middleware: async ({ chat_id, id }) => {
+            let user = await infoUser({ chat_id })
+            return get(user, 'job_title') == 'Admin' && get(user, 'confirmed') && get(user, 'user_step') == 20
+        },
+    },
+    deleteList: {
+        selfExecuteFn: async ({ chat_id, data, msg }) => {
+            let user = await infoUser({ chat_id })
+            let question = await Question.findOne({ isDeleted: false, id: data[1] })
+            if (question.length == 0) {
+                sendMessageHelper(chat_id, 'Mavjud emas')
+                return
+            }
+            let btn = await dataConfirmBtnEmp(chat_id, [
+                { name: `🗑 Testni o'chirish`, id: `deleteTest#${question.id}` },
+                { name: `❌ Bekor qilish`, id: `cancel#${question.id}` },
+            ], 2, 'deleteTest')
+            let createUser = await infoUser({ chat_id: get(question, 'chat_id') })
+            let createdBy = `${get(createUser, 'last_name', '-')} ${get(createUser, 'first_name')}`
+
+            let text = TestAdminInfo({
+                text: get(question, 'answerText', ''),
+                count: get(question, 'answers', []).length,
+                listAnswers: get(question, 'answers', []),
+                correct: get(question, 'correct'),
+                product: question,
+                createdBy,
+                status: true
+            })
+            if (get(question, 'photo', []).length) {
+                try {
+                    await bot.editMessageCaption(text, {
+                        chat_id: chat_id,
+                        message_id: get(msg, 'message.message_id'),
+                        parse_mode: 'HTML',
+                        ...btn
+                    });
+                }
+                catch (e) {
+                    bot.editMessageText(text, {
+                        chat_id: chat_id,
+                        message_id: get(msg, 'message.message_id'),
+                        parse_mode: 'HTML',
+                        ...btn
+                    })
+                }
+            }
+            else {
+                bot.editMessageText(text, {
+                    chat_id: chat_id,
+                    message_id: get(msg, 'message.message_id'),
+                    parse_mode: 'HTML',
+                    ...btn
+                })
+            }
+
+        },
+        middleware: async ({ chat_id, id }) => {
+            let user = await infoUser({ chat_id })
+            return get(user, 'job_title') == 'Admin' && get(user, 'confirmed') && get(user, 'user_step') == 20
+        },
+    },
+    deleteTest: {
+        selfExecuteFn: async ({ chat_id, data, msg }) => {
+            if (data[1] == 'cancel') {
+                let user = await infoUser({ chat_id })
+                let question = await Question.findOne({ isDeleted: false, id: data[2] })
+                if (question.length == 0) {
+                    sendMessageHelper(chat_id, 'Mavjud emas')
+                    return
+                }
+                let btn = await dataConfirmBtnEmp(chat_id, [{ name: `🗑 O'chirish`, id: question.id }], 1, 'deleteList')
+                let text = TestInfo(question)
+                if (get(question, 'photo', []).length) {
+                    try {
+                        await bot.editMessageCaption(text, {
+                            chat_id: chat_id,
+                            message_id: get(msg, 'message.message_id'),
+                            parse_mode: 'HTML',
+                            ...btn
+                        });
+                    }
+                    catch (e) {
+                        bot.editMessageText(text, {
+                            chat_id: chat_id,
+                            message_id: get(msg, 'message.message_id'),
+                            parse_mode: 'HTML',
+                            ...btn
+                        })
+                    }
+                }
+                else {
+                    bot.editMessageText(text, {
+                        chat_id: chat_id,
+                        message_id: get(msg, 'message.message_id'),
+                        parse_mode: 'HTML',
+                        ...btn
+                    })
+                }
+            }
+            else {
+                updateQuestion(data[2], { isDeleted: true })
+                bot.deleteMessage(chat_id, get(msg, 'message.message_id'))
+                sendMessageHelper(chat_id, `✅ ${data[2]} ID test muvaffaqiyatli o'chirildi.`)
+            }
+
+        },
+        middleware: async ({ chat_id, id }) => {
+            let user = await infoUser({ chat_id })
+            return get(user, 'job_title') == 'Admin' && get(user, 'confirmed') && get(user, 'user_step') == 20
+        },
+    }
+}
+
 module.exports = {
     adminCallBack,
-    adminTestManagement
+    adminTestManagement,
+    updateTestCallBack
 }

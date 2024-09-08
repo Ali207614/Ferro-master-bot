@@ -1,8 +1,9 @@
 const { get } = require("lodash");
 const { bot, rolesList, emoji } = require("../config");
-const { infoUser, sendMessageHelper, updateUser, updateCustom, validatePositiveInteger, updateBack } = require("../helpers");
+const { infoUser, sendMessageHelper, updateUser, updateCustom, validatePositiveInteger, updateBack, updateQuestion, updateThenFn, sleepNow } = require("../helpers");
 const { empDynamicBtn } = require("../keyboards/function_keyboards");
 const { dataConfirmBtnEmp } = require("../keyboards/inline_keyboards");
+const { mainMenuByRoles } = require("../keyboards/keyboards");
 const { confirmTestAdmin } = require("../keyboards/text");
 const User = require("../models/User");
 
@@ -43,18 +44,28 @@ let adminTestManagementStep = {
     "22": {
         selfExecuteFn: async ({ chat_id, msgText }) => {
             let user = await infoUser({ chat_id })
-            updateBack(chat_id, {
-                text: `✏️ Savolingizni kiriting`,
-                btn: empDynamicBtn(),
-                step: 22
-            })
-            let text = `Javoblar soni nechta bo'ladi?`
-            let btn = empDynamicBtn()
-            sendMessageHelper(chat_id, text, btn)
-            updateUser(chat_id, {
-                user_step: 23,
-                custom: { ...get(user, 'custom', {}), selectedProduct: { ...get(user, 'custom.selectedProduct', {}), text: msgText } }
-            })
+            if (get(user, 'custom.updateId')) {
+                updateQuestion(get(user, 'custom.updateId'), { answerText: msgText })
+                sendMessageHelper(chat_id, `✅ O'zgartirildi`, await mainMenuByRoles({ chat_id }))
+                await sleepNow(300)
+                updateThenFn(get(user, 'custom.updateId'))
+                updateCustom(chat_id, { updateId: '', in_process: false })
+            }
+            else {
+                updateBack(chat_id, {
+                    text: `✏️ Savolingizni kiriting`,
+                    btn: empDynamicBtn(),
+                    step: 22
+                })
+                let text = `Javoblar soni nechta bo'ladi?`
+                let btn = empDynamicBtn()
+                sendMessageHelper(chat_id, text, btn)
+                updateUser(chat_id, {
+                    user_step: 23,
+                    custom: { ...get(user, 'custom', {}), selectedProduct: { ...get(user, 'custom.selectedProduct', {}), text: msgText } }
+                })
+            }
+
         },
         middleware: async ({ chat_id }) => {
             let user = await infoUser({ chat_id })
@@ -63,7 +74,7 @@ let adminTestManagementStep = {
     },
     "23": {
         selfExecuteFn: async ({ chat_id, msgText }) => {
-            if (!validatePositiveInteger(msgText) || Number(msgText) < 0 || Number(msgText) > 10) {
+            if (msgText == 1 || !validatePositiveInteger(msgText) || Number(msgText) < 0 || Number(msgText) > 10) {
                 let text = `❗️ Xatolik!\nJavoblar soni to'g'ri formatda bo'lishi kerak. Iltimos, faqat musbat butun son kiriting. Misol: 4`
                 sendMessageHelper(chat_id, text)
                 return
@@ -130,13 +141,37 @@ const handleAnswerManagement = async ({ chat_id }) => {
                     }
                 })
                 if (lastIndex == i) {
-                    confirmTestAdmin({
-                        ...get(newUser, 'custom.selectedProduct', {}),
-                        listAnswers: { ...listAnswersObj, [i]: msgText },
-                        correct: correctIndex + 1 == i ? msgText : '',
-                        chat_id,
-                        product: get(newUser, 'custom.product', []).find(item => item.id == get(newUser, 'custom.selectedProduct.id'))
-                    })
+
+                    if (get(user, 'custom.updateId')) {
+                        let answers = Object.values({ ...listAnswersObj, [i]: msgText })
+
+                        updateQuestion(get(user, 'custom.updateId'),
+                            {
+                                answers,
+                                correct: correctIndex + 1 == i ? msgText : ''
+                            }
+                        )
+                        sendMessageHelper(chat_id, `✅ O'zgartirildi`, await mainMenuByRoles({ chat_id }))
+
+                        await sleepNow(300)
+                        updateThenFn(get(user, 'custom.updateId'))
+                        updateUser(chat_id, {
+                            custom: {
+                                updateId: '',
+                                in_process: false,
+                                selectedProduct: { id: get(user, 'custom.selectedProduct.id', {}) }
+                            }
+                        })
+                    }
+                    else {
+                        confirmTestAdmin({
+                            ...get(newUser, 'custom.selectedProduct', {}),
+                            listAnswers: { ...listAnswersObj, [i]: msgText },
+                            correct: correctIndex + 1 == i ? msgText : '',
+                            chat_id,
+                            product: get(newUser, 'custom.product', []).find(item => item.id == get(newUser, 'custom.selectedProduct.id'))
+                        })
+                    }
                     return
                 }
                 sendMessageHelper(chat_id, text, btn)

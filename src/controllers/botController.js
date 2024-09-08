@@ -1,12 +1,12 @@
 const { get } = require("lodash");
 let { bot, rolesList } = require("../config");
-const { infoUser, sendMessageHelper, updateCustom, updateUser } = require("../helpers");
+const { infoUser, sendMessageHelper, updateCustom, updateUser, updateQuestion, updateThenFn, sleepNow } = require("../helpers");
 const { empDynamicBtn } = require("../keyboards/function_keyboards");
 const { dataConfirmBtnEmp } = require("../keyboards/inline_keyboards");
 const { option, mainMenuByRoles } = require("../keyboards/keyboards");
 const { newUserInfo } = require("../keyboards/text");
 const User = require("../models/User");
-const { adminCallBack, adminTestManagement } = require("../modules/callback_query");
+const { adminCallBack, adminTestManagement, updateTestCallBack } = require("../modules/callback_query");
 const { adminText, adminTestManagementStep, handleAnswerManagement } = require("../modules/step");
 const { adminBtn, executeBtn, adminTestManagementBtn } = require("../modules/text");
 const b1Controller = require('./b1Controller')
@@ -41,7 +41,8 @@ class botConroller {
                         ...get(user, 'custom', {}),
                         productMessageId: '',
                         in_process: false,
-                        selectedProduct: {}
+                        selectedProduct: {},
+                        updateId: ''
                     }
                 })
                 return
@@ -104,13 +105,15 @@ class botConroller {
             }
             let callbackTree = {
                 ...adminCallBack,
-                ...adminTestManagement
+                ...adminTestManagement,
+                ...updateTestCallBack
             }
             if (user) {
                 if (callbackTree[data[0]]) {
                     let callbackTreeList = [
                         adminCallBack,
-                        adminTestManagement
+                        adminTestManagement,
+                        updateTestCallBack
                     ]
                     let execute = callbackTreeList.find(item => item[data[0]] && item[data[0]]?.middleware({ chat_id, data, msgText: msg.text, id: get(msg, 'message.message_id', 0) }))
                     execute = execute ? execute[data[0]] : {}
@@ -209,13 +212,40 @@ class botConroller {
         try {
             let user = await infoUser({ chat_id })
             if (get(user, 'job_title') == 'Admin' && get(user, 'confirmed') && get(user, 'user_step') == 21) {
-                let text = `✏️ Savolingizni kiriting`
-                let btn = empDynamicBtn()
-                sendMessageHelper(chat_id, text, btn)
-                updateUser(chat_id, {
-                    user_step: 22,
-                    custom: { ...get(user, 'custom', {}), selectedProduct: { ...get(user, 'custom.selectedProduct', {}), photo: get(msg, 'photo') } }
-                })
+                if (get(user, 'custom.updateId')) {
+                    updateQuestion(get(user, 'custom.updateId'), { photo: get(msg, 'photo') })
+                    sendMessageHelper(chat_id, `✅ O'zgartirildi`,
+                        await mainMenuByRoles({ chat_id })
+                    )
+
+                    await sleepNow(300)
+
+                    updateThenFn(get(user, 'custom.updateId'))
+                    updateUser(chat_id, {
+                        custom: {
+                            ...get(user, 'custom', {}),
+                            updateId: '',
+                            in_process: false
+                        }
+                    })
+                }
+                else {
+                    let text = `✏️ Savolingizni kiriting`
+                    let btn = empDynamicBtn()
+                    sendMessageHelper(chat_id, text, btn)
+                    updateUser(chat_id, {
+                        user_step: 22,
+                        custom: {
+                            ...get(user, 'custom', {}),
+                            selectedProduct:
+                            {
+                                ...get(user, 'custom.selectedProduct', {}),
+                                photo: get(msg, 'photo')
+                            }
+                        }
+                    })
+                }
+
             }
         } catch (err) {
             throw new Error(err);

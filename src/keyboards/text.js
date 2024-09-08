@@ -100,23 +100,30 @@ ${answersText}
 
     if (photo?.length) {
         // Agar rasm bo'lsa, xabarni rasm bilan jo'natish
-        bot.sendPhoto(chat_id, get(photo, `[0].file_id`), {
-            caption: confirmationMessage,
-            ...confirmationButtons
-        });
+       
+
+        try {
+            bot.sendPhoto(chat_id, get(photo, `[0].file_id`), {
+                caption: confirmationMessage,
+                ...confirmationButtons
+            });
+        }
+        catch (e) {
+            bot.sendMessage(chat_id, confirmationMessage, confirmationButtons);
+        }
     } else {
         // Agar rasm bo'lmasa, oddiy xabarni jo'natish
         bot.sendMessage(chat_id, confirmationMessage, confirmationButtons);
     }
 }
 
-let TestAdminInfo = ({ chat_id, text, count, listAnswers, correct, product, createdBy }) => {
+let TestAdminInfo = ({ text, count, listAnswers, correct, product, createdBy, status = false }) => {
     const answersText = Object.entries(listAnswers)
         .map(([key, value], i) => `📍 ${i + 1}. ${value}`)
         .join('\n');
 
     const confirmationMessage = `
-✅ <b>Test Muvaffaqiyatli qo'shildi!</b>
+${status ? '' : `✅ <b>Test Muvaffaqiyatli qo'shildi!</b>`}
 
 📝 <b>Test haqida ma'lumot:</b>
 
@@ -137,10 +144,31 @@ ${answersText}
 📅 <b>Qo'shilgan sana:</b> ${new Date(get(product, 'createdAt')).toLocaleDateString()}
         `;
 
+    return confirmationMessage
+}
+
+let TestInfo = ({ answerText, count, answers, correct }) => {
+    const answersTextList = Object.entries(answers)
+        .map(([key, value], i) => `📍 ${i + 1}. ${value}`)
+        .join('\n');
+
+    const confirmationMessage = `
+📝 <b>Test haqida ma'lumot:</b>
+
+❓ <b>Savol:</b> ${answerText}
+📊 <b>Umumiy javoblar soni:</b> ${answers?.length || 0}
+        
+📜 <b>Foydalanuvchi javoblari:</b>
+${answersTextList}
+        
+✅ <b>To'g'ri javob:</b> ${correct}
+        `;
+
     // Xabarni jo'natish
     // bot.sendMessage(chat_id, confirmationMessage, { parse_mode: 'HTML' });
     return confirmationMessage
 }
 
 
-module.exports = { newUserInfo, updateUserInfo, confirmLoginText, deleteUserInfo, userDeleteInfo, confirmTestAdmin, TestAdminInfo }
+
+module.exports = { newUserInfo, updateUserInfo, confirmLoginText, deleteUserInfo, userDeleteInfo, confirmTestAdmin, TestAdminInfo, TestInfo }

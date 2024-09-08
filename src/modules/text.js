@@ -1,12 +1,14 @@
 const { get } = require("lodash")
 const { emoji, rolesList, bot, uncategorizedProduct } = require("../config")
 const ferroController = require("../controllers/ferroController")
-const { infoUser, updateCustom, updateStep, sendMessageHelper, updateUser, updateBack } = require("../helpers")
+const { infoUser, updateCustom, updateStep, sendMessageHelper, updateUser, updateBack, sleepNow } = require("../helpers")
 const { empDynamicBtn } = require("../keyboards/function_keyboards")
 const { dataConfirmBtnEmp } = require("../keyboards/inline_keyboards")
 const { mainMenuByRoles } = require("../keyboards/keyboards")
 const Catalog = require("../models/Catalog")
 const User = require("../models/User")
+const Question = require("../models/Question")
+const { TestInfo } = require("../keyboards/text")
 
 let executeBtn = {
     "Orqaga": {
@@ -17,7 +19,7 @@ let executeBtn = {
         middleware: async ({ chat_id }) => {
             let user = await infoUser({ chat_id })
             if (get(user, 'back', []).length == 1) {
-                updateCustom(chat_id, { 'in_process': false })
+                updateCustom(chat_id, { 'in_process': false, updateId: '' })
             }
             return get(user, 'back', []).length
         },
@@ -163,6 +165,11 @@ let adminTestManagementBtn = {
     "➕ Test qo'shish": {
         selfExecuteFn: async ({ chat_id }) => {
             let user = await infoUser({ chat_id })
+            updateBack(chat_id, {
+                text: `Menular`,
+                btn: empDynamicBtn([`➕ Test qo'shish`, `✏️ O'zgartirish`, `🗑 O'chirish`], 2),
+                step: 20
+            })
             let text = `Agar savolda rasm bo'lsa, rasmni yuboring 📸 yoki keyingi bosqichga o'ting`
             let btn = empDynamicBtn([`Keyingi bosqichga o'tish ➡️`])
             sendMessageHelper(chat_id, text, btn)
@@ -179,7 +186,70 @@ let adminTestManagementBtn = {
     "✏️ O'zgartirish": {
         selfExecuteFn: async ({ chat_id }) => {
             let user = await infoUser({ chat_id })
+            let questions = await Question.find({ isDeleted: false, productId: get(user, 'custom.selectedProduct.id') })
+            if (questions.length == 0) {
+                await sendMessageHelper(chat_id, 'Mavjud emas')
+                return
+            }
+            for (let i = 0; i < questions.length; i++) {
+                let btn = await dataConfirmBtnEmp(chat_id, [{ name: `✏️O'zgartirasizmi ?`, id: questions[i].id }], 1, 'updateList')
+                let text = TestInfo(questions[i])
+                let photo = get(questions[i], 'photo', [])
 
+                if (photo?.length) {
+                    try {
+                        await bot.sendPhoto(chat_id, get(photo, `[0].file_id`), {
+                            caption: text,
+                            parse_mode: 'HTML',
+                            ...btn
+                        });
+                    }
+                    catch (e) {
+                        bot.sendMessage(chat_id, text, { ...btn, parse_mode: 'HTML' });
+                    }
+                } else {
+                    bot.sendMessage(chat_id, text, { ...btn, parse_mode: 'HTML' });
+                }
+                await sleepNow(300)
+
+            }
+        },
+        middleware: async ({ chat_id }) => {
+            let user = await infoUser({ chat_id })
+            return get(user, 'job_title') == 'Admin' && get(user, 'confirmed') && get(user, 'user_step') == 20
+        },
+    },
+    "🗑 O'chirish": {
+        selfExecuteFn: async ({ chat_id }) => {
+            let user = await infoUser({ chat_id })
+            let questions = await Question.find({ isDeleted: false, productId: get(user, 'custom.selectedProduct.id') })
+            if (questions.length == 0) {
+                await sendMessageHelper(chat_id, 'Mavjud emas')
+                return
+            }
+            for (let i = 0; i < questions.length; i++) {
+                let btn = await dataConfirmBtnEmp(chat_id, [{ name: `🗑 O'chirish`, id: questions[i].id }], 1, 'deleteList')
+                let text = TestInfo(questions[i])
+                let photo = get(questions[i], 'photo', [])
+
+                if (photo?.length) {
+                    try {
+                        await bot.sendPhoto(chat_id, get(photo, `[0].file_id`), {
+                            caption: text,
+                            parse_mode: 'HTML',
+                            ...btn
+                        });
+                    }
+                    catch (e) {
+                        console.log('catch')
+                        bot.sendMessage(chat_id, text, { ...btn, parse_mode: 'HTML' });
+                    }
+                } else {
+                    bot.sendMessage(chat_id, text, { ...btn, parse_mode: 'HTML' });
+                }
+                await sleepNow(300)
+
+            }
         },
         middleware: async ({ chat_id }) => {
             let user = await infoUser({ chat_id })
