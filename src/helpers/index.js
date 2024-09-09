@@ -9,7 +9,6 @@ const { empDynamicBtn } = require("../keyboards/function_keyboards");
 const { dataConfirmBtnEmp } = require("../keyboards/inline_keyboards");
 
 
-
 function formatterCurrency(
     number = 0,
     currency = "UZS",
@@ -191,5 +190,5 @@ module.exports = {
     executeUpdateFn,
     updateQuestion,
     updateThenFn,
-    sleepNow
+    sleepNow,
 }

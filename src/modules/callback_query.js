@@ -5,7 +5,7 @@ const { infoUser, updateUser, deleteUser, sendMessageHelper, updateCustom, updat
 const { empDynamicBtn } = require("../keyboards/function_keyboards")
 const { dataConfirmBtnEmp } = require("../keyboards/inline_keyboards")
 const { mainMenuByRoles, option, adminBtn } = require("../keyboards/keyboards")
-const { updateUserInfo, newUserInfo, confirmLoginText, userDeleteInfo, TestAdminInfo, TestInfo } = require("../keyboards/text")
+const { updateUserInfo, newUserInfo, confirmLoginText, userDeleteInfo, TestAdminInfo, TestInfo, generateProductText } = require("../keyboards/text")
 const Catalog = require("../models/Catalog")
 const ChildProduct = require("../models/ChildProduct")
 const Product = require("../models/Product")
@@ -1097,6 +1097,35 @@ let userCallback = {
     },
     childProduct: {
         selfExecuteFn: async ({ chat_id, data, msg }) => {
+
+            let user = await infoUser({ chat_id });
+            let deleteMessage = await sendMessageHelper(chat_id, 'Loading...')
+
+            let childProduct = await ChildProduct.findOne({ id: data[1] })
+            let photoUrl = `${process.env.ferro_api}/file/thumbnail/square/1280/` + get(childProduct, 'parentProduct.photos[0].photo.url', '');
+            let text = generateProductText(childProduct)
+            let updateId;
+
+            try {
+                if (get(user, 'custom.productMessageId')) {
+                    await bot.deleteMessage(chat_id, user.custom?.productMessageId);
+                }
+            } catch (error) {
+                console.error('Xabarni o\'chirishda xatolik:', error.message);
+            }
+
+            if (get(childProduct, 'parentProduct.photos[0].photo.url', '')) {
+                updateId = await bot.sendPhoto(chat_id, photoUrl, {
+                    caption: text,
+                    parse_mode: 'MarkdownV2',
+                });
+            } else {
+                updateId = await sendMessageHelper(chat_id, text, { parse_mode: 'MarkdownV2' });
+            }
+            bot.deleteMessage(chat_id, deleteMessage.message_id)
+
+            updateCustom(chat_id, { productMessageId: updateId.message_id });
+
 
             return
         },

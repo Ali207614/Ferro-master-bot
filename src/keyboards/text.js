@@ -100,7 +100,7 @@ ${answersText}
 
     if (photo?.length) {
         // Agar rasm bo'lsa, xabarni rasm bilan jo'natish
-       
+
 
         try {
             bot.sendPhoto(chat_id, get(photo, `[0].file_id`), {
@@ -170,5 +170,37 @@ ${answersTextList}
 }
 
 
+function escapeMarkdown(text) {
+    return text.replace(/([_*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
+}
 
-module.exports = { newUserInfo, updateUserInfo, confirmLoginText, deleteUserInfo, userDeleteInfo, confirmTestAdmin, TestAdminInfo, TestInfo }
+function generateProductText(product) {
+    const name = escapeMarkdown(get(product, 'name.textUzLat', 'Noma\'lum'));
+    const searchableName = escapeMarkdown(get(product, 'searchableName', 'Noma\'lum'));
+    const unit = escapeMarkdown(get(product, 'unit.name.textUzLat', 'Noma\'lum'));
+
+    let text = `🛠 *Mahsulot haqida ma'lumot:*\n\n`;
+    text += `*🔍 Mahsulot joyi*: \`${get(product, 'parentProduct.category.parent.name.textUzLat', '')} > ${get(product, 'parentProduct.category.name.textUzLat')} > ${get(product, 'parentProduct.name.textUzLat')}\`\n\n`
+    text += `*Nomi:* ${name}\n`;
+    text += `*Qidirish nomi:* ${searchableName}\n`;
+    text += `*Birlik:* ${unit}\n\n`;
+
+    // Mahsulot xususiyatlarini qochirib qo'shish
+    get(product, 'properties', []).forEach(prop => {
+        const propName = escapeMarkdown(get(prop, 'propertyValue.property.name.textUzLat', 'Noma\'lum'));
+        const propValue = escapeMarkdown(get(prop, 'propertyValue.value.textUzLat', 'Noma\'lum'));
+        const propUnit = escapeMarkdown(get(prop, 'propertyValue.property.unit.name.textUzLat', ''));
+
+        if (propValue) {
+            text += `📏 *${propName}:* ${propValue} ${propUnit}\n`;
+        } else {
+            text += `📦 *${propName}:* Ma'lumot mavjud emas\n`;
+        }
+    });
+
+    return text;
+}
+
+
+
+module.exports = { newUserInfo, updateUserInfo, confirmLoginText, deleteUserInfo, userDeleteInfo, confirmTestAdmin, TestAdminInfo, TestInfo, generateProductText }
