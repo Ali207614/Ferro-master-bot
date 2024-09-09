@@ -73,7 +73,6 @@ async function updateCustom(chat_id, data) {
 async function updateQuestion(id, data) {
     let question = await Question.findOne({ id })
     Object.assign(question, { ...data })
-    console.log()
     await question.save({ validateBeforeSave: false })
 }
 
@@ -155,7 +154,7 @@ let updateThenFn = async (id) => {
         let categories = get(user, 'custom.categories', [])
         let productList = get(user, 'custom.product', [])
         let textCatalog = `*🛠️ Mahsulotni tanlang*\n\n` +
-            `*🔍 Mahsulot joyi*: \`Katalog > ${get(categories, 'name.textUzLat', '')} > ${get(productList, '[0].category.name.textUzLat')}\`\n\n` +
+            `*🔍 Mahsulot joyi*: \`${get(categories, 'name.textUzLat', '')} > ${get(productList, '[0].category.name.textUzLat')}\`\n\n` +
             `Iltimos, quyidagi mahsulotlardan birini tanlang:`
 
         let productBtn = productList.filter(item => !item.isDisabled).map(item => {

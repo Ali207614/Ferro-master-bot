@@ -7,6 +7,7 @@ const { dataConfirmBtnEmp } = require("../keyboards/inline_keyboards")
 const { mainMenuByRoles, option, adminBtn } = require("../keyboards/keyboards")
 const { updateUserInfo, newUserInfo, confirmLoginText, userDeleteInfo, TestAdminInfo, TestInfo } = require("../keyboards/text")
 const Catalog = require("../models/Catalog")
+const ChildProduct = require("../models/ChildProduct")
 const Product = require("../models/Product")
 const Question = require("../models/Question")
 const User = require("../models/User")
@@ -343,7 +344,7 @@ let adminTestManagement = {
         selfExecuteFn: async ({ chat_id, data, msg }) => {
             let categories = await Catalog.findOne({ id: data[1] })
             let text = `*🛠️ Kategoriyani tanlang*\n\n` +
-                `*🔍 Kategoriya joyi*: \`Katalog > ${get(categories, 'name.textUzLat', '')}\`\n\n` +
+                `*🔍 Kategoriya joyi*: \`${get(categories, 'name.textUzLat', '')}\`\n\n` +
                 `Iltimos, quyidagi kategoriyalardan birini tanlang:`
             let categoriesBtn = get(categories, 'subCategories', []).filter(item => !item.isDisabled).map(item => {
                 return { name: get(item, 'name.textUzLat', '-'), id: get(item, 'id') }
@@ -359,8 +360,7 @@ let adminTestManagement = {
             return
         },
         middleware: async ({ chat_id, id }) => {
-            let user = await infoUser({ chat_id })
-            return get(user, 'job_title') == 'Admin'
+            return true
         },
     },
     categoriesAdmin: {
@@ -376,12 +376,16 @@ let adminTestManagement = {
                 product = newProduct
             }
             let text = `*🛠️ Mahsulotni tanlang*\n\n` +
-                `*🔍 Mahsulot joyi*: \`Katalog > ${get(product, '[0].category.parent.name.textUzLat', '')} > ${get(product, '[0].category.name.textUzLat')}\`\n\n` +
+                `*🔍 Mahsulot joyi*: \`${get(product, '[0].category.parent.name.textUzLat', '')} > ${get(product, '[0].category.name.textUzLat')}\`\n\n` +
                 `Iltimos, quyidagi mahsulotlardan birini tanlang:`
             let productBtn = product.filter(item => !item.isDisabled).map(item => {
                 return { name: get(item, 'name.textUzLat', '-'), id: get(item, 'id') }
             })
-            let btn = await dataConfirmBtnEmp(chat_id, productBtn, 2, 'productAdmin')
+            let obj = {
+                'User': 'productUser',
+                'Admin': 'productAdmin'
+            }
+            let btn = await dataConfirmBtnEmp(chat_id, productBtn, 2, obj[get(user, 'job_title')])
             if (uncategorizedProduct.includes(+data[1])) {
                 btn.reply_markup.inline_keyboard = [...btn.reply_markup.inline_keyboard.filter(item => item[0].callback_data != 'backToCategory'), [{
                     text: `🔙 Katalogga qaytish`,
@@ -403,8 +407,7 @@ let adminTestManagement = {
             return
         },
         middleware: async ({ chat_id, id }) => {
-            let user = await infoUser({ chat_id })
-            return get(user, 'job_title') == 'Admin'
+            return true
         },
     },
     paginationProductAdmin: {
@@ -413,7 +416,7 @@ let adminTestManagement = {
             let categories = get(user, 'custom.categories', [])
             let product = get(user, 'custom.product', [])
             let text = `*🛠️ Mahsulotni tanlang*\n\n` +
-                `*🔍 Mahsulot joyi*: \`Katalog > ${get(categories, 'name.textUzLat', '')} > ${get(product, '[0].category.name.textUzLat')}\`\n\n` +
+                `*🔍 Mahsulot joyi*: \`${get(categories, 'name.textUzLat', '')} > ${get(product, '[0].category.name.textUzLat')}\`\n\n` +
                 `Iltimos, quyidagi mahsulotlardan birini tanlang:`
 
             let pagination = data[1] == 'prev' ? { prev: +data[2] - 10, next: data[2] } : { prev: data[2], next: +data[2] + 10 }
@@ -422,8 +425,11 @@ let adminTestManagement = {
             let productBtn = product.filter(item => !item.isDisabled).map(item => {
                 return { name: get(item, 'name.textUzLat', '-'), id: get(item, 'id') }
             })
-
-            let btn = await dataConfirmBtnEmp(chat_id, productBtn, 2, 'productAdmin', pagination)
+            let obj = {
+                'User': 'productUser',
+                'Admin': 'productAdmin'
+            }
+            let btn = await dataConfirmBtnEmp(chat_id, productBtn, 2, obj[get(user, 'job_title')])
             if (uncategorizedProduct.includes(Number(get(product, '[0].category.id', '0')))) {
                 btn.reply_markup.inline_keyboard = [...btn.reply_markup.inline_keyboard.filter(item => item[0].callback_data != 'backToCategory'), [{
                     text: `🔙 Katalogga qaytish`,
@@ -439,8 +445,7 @@ let adminTestManagement = {
             return
         },
         middleware: async ({ chat_id, id }) => {
-            let user = await infoUser({ chat_id })
-            return get(user, 'job_title') == 'Admin'
+            return true
         },
     },
     paginationCategoriesAdmin: {
@@ -449,11 +454,12 @@ let adminTestManagement = {
             let categories = get(user, 'custom.categories', {})
             let subCategory = get(user, 'custom.subCategory', [])
             let text = `*🛠️ Kategoriyani tanlang*\n\n` +
-                `*🔍 Kategoriya joyi*: \`Katalog > ${get(categories, 'name.textUzLat', '')}\`\n\n` +
+                `*🔍 Kategoriya joyi*: \`${get(categories, 'name.textUzLat', '')}\`\n\n` +
                 `Iltimos, quyidagi kategoriyalardan birini tanlang:`
             let categoriesBtn = subCategory.filter(item => !item.isDisabled).map(item => {
                 return { name: get(item, 'name.textUzLat', '-'), id: get(item, 'id') }
             })
+
             let pagination = data[1] == 'prev' ? { prev: +data[2] - 10, next: data[2] } : { prev: data[2], next: +data[2] + 10 }
 
             let btn = await dataConfirmBtnEmp(chat_id, categoriesBtn, 2, 'categoriesAdmin', pagination)
@@ -466,8 +472,7 @@ let adminTestManagement = {
             return
         },
         middleware: async ({ chat_id, id }) => {
-            let user = await infoUser({ chat_id })
-            return get(user, 'job_title') == 'Admin'
+            return true
         },
     },
     backToCatalog: {
@@ -509,8 +514,7 @@ let adminTestManagement = {
             return
         },
         middleware: async ({ chat_id, id }) => {
-            let user = await infoUser({ chat_id })
-            return get(user, 'job_title') == 'Admin'
+            return true
         },
     },
     backToCategory: {
@@ -519,7 +523,7 @@ let adminTestManagement = {
             let categories = get(user, 'custom.categories', {})
             let subCategory = get(user, 'custom.subCategory', [])
             let text = `*🛠️ Kategoriyani tanlang*\n\n` +
-                `*🔍 Kategoriya joyi*: \`Katalog > ${get(categories, 'name.textUzLat', '')}\`\n\n` +
+                `*🔍 Kategoriya joyi*: \`${get(categories, 'name.textUzLat', '')}\`\n\n` +
                 `Iltimos, quyidagi kategoriyalardan birini tanlang:`
             let categoriesBtn = subCategory.filter(item => !item.isDisabled).map(item => {
                 return { name: get(item, 'name.textUzLat', '-'), id: get(item, 'id') }
@@ -535,8 +539,7 @@ let adminTestManagement = {
             return
         },
         middleware: async ({ chat_id, id }) => {
-            let user = await infoUser({ chat_id })
-            return get(user, 'job_title') == 'Admin'
+            return true
         },
     },
     productAdmin: {
@@ -553,7 +556,9 @@ let adminTestManagement = {
             let btn = empDynamicBtn([`➕ Test qo'shish`, `✏️ O'zgartirish`, `🗑 O'chirish`], 2);
 
             try {
-                await bot.deleteMessage(chat_id, user.custom.productMessageId);
+                if (get(user, 'custom.productMessageId')) {
+                    await bot.deleteMessage(chat_id, user.custom?.productMessageId);
+                }
             } catch (error) {
                 console.error('Xabarni o\'chirishda xatolik:', error.message);
             }
@@ -653,7 +658,7 @@ let adminTestManagement = {
                     let categories = get(user, 'custom.categories', [])
                     let productList = get(user, 'custom.product', [])
                     let textCatalog = `*🛠️ Mahsulotni tanlang*\n\n` +
-                        `*🔍 Mahsulot joyi*: \`Katalog > ${get(categories, 'name.textUzLat', '')} > ${get(productList, '[0].category.name.textUzLat')}\`\n\n` +
+                        `*🔍 Mahsulot joyi*: \`${get(categories, 'name.textUzLat', '')} > ${get(productList, '[0].category.name.textUzLat')}\`\n\n` +
                         `Iltimos, quyidagi mahsulotlardan birini tanlang:`
 
                     let productBtn = productList.filter(item => !item.isDisabled).map(item => {
@@ -690,7 +695,7 @@ let adminTestManagement = {
                 let categories = get(user, 'custom.categories', [])
                 let productList = get(user, 'custom.product', [])
                 let textCatalog = `*🛠️ Mahsulotni tanlang*\n\n` +
-                    `*🔍 Mahsulot joyi*: \`Katalog > ${get(categories, 'name.textUzLat', '')} > ${get(productList, '[0].category.name.textUzLat')}\`\n\n` +
+                    `*🔍 Mahsulot joyi*: \`${get(categories, 'name.textUzLat', '')} > ${get(productList, '[0].category.name.textUzLat')}\`\n\n` +
                     `Iltimos, quyidagi mahsulotlardan birini tanlang:`
 
                 let productBtn = productList.filter(item => !item.isDisabled).map(item => {
@@ -913,11 +918,198 @@ let updateTestCallBack = {
             let user = await infoUser({ chat_id })
             return get(user, 'job_title') == 'Admin' && get(user, 'confirmed') && get(user, 'user_step') == 20
         },
-    }
+    },
+
+}
+
+let userCallback = {
+    productUser: {
+        selfExecuteFn: async ({ chat_id, data, msg }) => {
+            let product = await ChildProduct.find({ 'parentProduct.id': data[1] })
+            if (product.length == 0) {
+                let deleteMessage = await sendMessageHelper(chat_id, 'Loading...')
+                let newProduct = await ferroController.getChildProduct(data[1])
+
+                await ChildProduct.insertMany(newProduct);
+                bot.deleteMessage(chat_id, deleteMessage.message_id)
+                product = newProduct
+            }
+            if (product?.length == 0) {
+                sendMessagaHelper(chat_id, "Mavjud emas")
+                return
+            }
+            let text = `*🛠️ Mahsulotni tanlang*\n\n` +
+                `*🔍 Mahsulot joyi*: \`${get(product, '[0].parentProduct.category.parent.name.textUzLat', '')} > ${get(product, '[0].parentProduct.category.name.textUzLat')} > ${get(product, '[0].parentProduct.name.textUzLat')}\`\n\n` +
+                `Iltimos, quyidagi ichki mahsulotlardan birini tanlang`
+            let productBtn = product.filter(item => !item.isDisabled).map(item => {
+                return { name: get(item, 'name.textUzLat', '-'), id: get(item, 'id') }
+            })
+
+            let btn = await dataConfirmBtnEmp(chat_id, productBtn, 2, 'childProduct')
+
+            btn.reply_markup.inline_keyboard = [...btn.reply_markup.inline_keyboard, [{
+                text: ` 📝 Testni boshlash`,
+                callback_data: 'startTest'
+            }]]
+
+            bot.editMessageText(text, {
+                chat_id: chat_id,
+                message_id: get(msg, 'message.message_id'),
+                parse_mode: 'MarkdownV2',
+                ...btn
+            })
+
+            updateCustom(chat_id, {
+                childProduct: product,
+            })
+
+            return
+        },
+        middleware: async ({ chat_id, id }) => {
+            let user = await infoUser({ chat_id })
+            return get(user, 'job_title') == 'User'
+        },
+    },
+    paginationProductUser: {
+        selfExecuteFn: async ({ chat_id, data, msg }) => {
+            let user = await infoUser({ chat_id })
+            let categories = get(user, 'custom.categories', [])
+            let product = get(user, 'custom.product', [])
+            let text = `*🛠️ Mahsulotni tanlang*\n\n` +
+                `*🔍 Mahsulot joyi*: \`${get(categories, 'name.textUzLat', '')} > ${get(product, '[0].category.name.textUzLat')}\`\n\n` +
+                `Iltimos, quyidagi mahsulotlardan birini tanlang:`
+
+            let pagination = data[1] == 'prev' ? { prev: +data[2] - 10, next: data[2] } : { prev: data[2], next: +data[2] + 10 }
+
+
+            let productBtn = product.filter(item => !item.isDisabled).map(item => {
+                return { name: get(item, 'name.textUzLat', '-'), id: get(item, 'id') }
+            })
+            let obj = {
+                'User': 'productUser',
+                'Admin': 'productAdmin'
+            }
+            let btn = await dataConfirmBtnEmp(chat_id, productBtn, 2, obj[get(user, 'job_title')], pagination)
+            if (uncategorizedProduct.includes(Number(get(product, '[0].category.id', '0')))) {
+                btn.reply_markup.inline_keyboard = [...btn.reply_markup.inline_keyboard.filter(item => item[0].callback_data != 'backToCategory'), [{
+                    text: `🔙 Katalogga qaytish`,
+                    callback_data: 'backToCatalog'
+                }]]
+            }
+            bot.editMessageText(text, {
+                chat_id: chat_id,
+                message_id: get(msg, 'message.message_id'),
+                parse_mode: 'MarkdownV2',
+                ...btn
+            })
+            return
+
+            // let user = await infoUser({ chat_id })
+            // let product = get(user, 'custom.childProduct', [])
+            // let text = `*🛠️ Mahsulotni tanlang*\n\n` +
+            //     `*🔍 Mahsulot joyi*: \`${get(product, '[0].parentProduct.category.parent.name.textUzLat', '')} > ${get(product, '[0].parentProduct.category.name.textUzLat')} > ${get(product, '[0].parentProduct.name.textUzLat')}\`\n\n` +
+            //     `Iltimos, quyidagi ichki mahsulotlardan birini tanlang`
+            // let productBtn = product.filter(item => !item.isDisabled).map(item => {
+            //     return { name: get(item, 'name.textUzLat', '-'), id: get(item, 'id') }
+            // })
+            // let pagination = data[1] == 'prev' ? { prev: +data[2] - 10, next: data[2] } : { prev: data[2], next: +data[2] + 10 }
+
+            // let btn = await dataConfirmBtnEmp(chat_id, productBtn, 2, 'childProduct', pagination)
+
+            // bot.editMessageText(text, {
+            //     chat_id: chat_id,
+            //     message_id: get(msg, 'message.message_id'),
+            //     parse_mode: 'MarkdownV2',
+            //     ...btn
+            // })
+            // updateCustom(chat_id, {
+            //     childProduct: product,
+            // })
+        },
+        middleware: async ({ chat_id, id }) => {
+            let user = await infoUser({ chat_id })
+            return get(user, 'job_title') == 'User'
+        },
+    },
+    backToChildProduct: {
+        selfExecuteFn: async ({ chat_id, data, msg }) => {
+            let user = await infoUser({ chat_id })
+            let categories = get(user, 'custom.categories', [])
+            let product = get(user, 'custom.product', [])
+            let text = `*🛠️ Mahsulotni tanlang*\n\n` +
+                `*🔍 Mahsulot joyi*: \`${get(categories, 'name.textUzLat', '')} > ${get(product, '[0].category.name.textUzLat')}\`\n\n` +
+                `Iltimos, quyidagi mahsulotlardan birini tanlang:`
+
+
+            let productBtn = product.filter(item => !item.isDisabled).map(item => {
+                return { name: get(item, 'name.textUzLat', '-'), id: get(item, 'id') }
+            })
+
+            let btn = await dataConfirmBtnEmp(chat_id, productBtn, 2, 'productUser')
+
+            if (uncategorizedProduct.includes(Number(get(product, '[0].category.id', '0')))) {
+                btn.reply_markup.inline_keyboard = [...btn.reply_markup.inline_keyboard.filter(item => item[0].callback_data != 'backToCategory'), [{
+                    text: `🔙 Katalogga qaytish`,
+                    callback_data: 'backToCatalog'
+                }]]
+            }
+            bot.editMessageText(text, {
+                chat_id: chat_id,
+                message_id: get(msg, 'message.message_id'),
+                parse_mode: 'MarkdownV2',
+                ...btn
+            })
+            return
+        },
+        middleware: async ({ chat_id, id }) => {
+            let user = await infoUser({ chat_id })
+            return get(user, 'job_title') == 'User'
+        },
+    },
+    paginationChildProduct: {
+        selfExecuteFn: async ({ chat_id, data, msg }) => {
+            let user = await infoUser({ chat_id })
+            let product = get(user, 'custom.childProduct')
+
+            let text = `*🛠️ Mahsulotni tanlang*\n\n` +
+                `*🔍 Mahsulot joyi*: \`${get(product, '[0].parentProduct.category.parent.name.textUzLat', '')} > ${get(product, '[0].parentProduct.category.name.textUzLat')} > ${get(product, '[0].parentProduct.name.textUzLat')}\`\n\n` +
+                `Iltimos, quyidagi ichki mahsulotlardan birini tanlang`
+            let productBtn = product.filter(item => !item.isDisabled).map(item => {
+                return { name: get(item, 'name.textUzLat', '-'), id: get(item, 'id') }
+            })
+            let pagination = data[1] == 'prev' ? { prev: +data[2] - 10, next: data[2] } : { prev: data[2], next: +data[2] + 10 }
+            let btn = await dataConfirmBtnEmp(chat_id, productBtn, 2, 'childProduct', pagination)
+
+            bot.editMessageText(text, {
+                chat_id: chat_id,
+                message_id: get(msg, 'message.message_id'),
+                parse_mode: 'MarkdownV2',
+                ...btn
+            })
+
+
+            return
+        },
+        middleware: async ({ chat_id, id }) => {
+            let user = await infoUser({ chat_id })
+            return get(user, 'job_title') == 'User'
+        },
+    },
+    childProduct: {
+        selfExecuteFn: async ({ chat_id, data, msg }) => {
+
+            return
+        },
+        middleware: async ({ chat_id, id }) => {
+            let user = await infoUser({ chat_id })
+            return get(user, 'job_title') == 'User'
+        },
+    },
 }
 
 module.exports = {
     adminCallBack,
     adminTestManagement,
-    updateTestCallBack
+    updateTestCallBack,
+    userCallback
 }

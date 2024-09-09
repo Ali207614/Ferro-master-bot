@@ -2,24 +2,24 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const PhotoSchema = new Schema({
-    id: { type: Number, required: true },
+    id: { type: Number, required: false },
     photo: {
-        id: { type: Number, required: true },
-        name: { type: String, required: true },
-        url: { type: String, required: true },
-        size: { type: Number, required: true },
-        createdDate: { type: Date, required: true }
+        id: { type: Number, required: false },
+        name: { type: String, required: false },
+        url: { type: String, required: false },
+        size: { type: Number, required: false },
+        createdDate: { type: Date, required: false }
     },
     sort: { type: Number }
 });
 
 const CategoryParentSchema = new Schema({
-    id: { type: Number, required: true },
+    id: { type: Number, required: false },
     name: {
-        id: { type: Number, required: true },
-        textUzLat: { type: String, required: true },
-        textUzCyr: { type: String, required: true },
-        textRu: { type: String, required: true }
+        id: { type: Number, required: false },
+        textUzLat: { type: String, required: false },
+        textUzCyr: { type: String, required: false },
+        textRu: { type: String, required: false }
     },
     icon: {
         id: { type: Number },
@@ -32,12 +32,12 @@ const CategoryParentSchema = new Schema({
 });
 
 const CategorySchema = new Schema({
-    id: { type: Number, required: true },
+    id: { type: Number, required: false },
     name: {
-        id: { type: Number, required: true },
-        textUzLat: { type: String, required: true },
-        textUzCyr: { type: String, required: true },
-        textRu: { type: String, required: true },
+        id: { type: Number, required: false },
+        textUzLat: { type: String, required: false },
+        textUzCyr: { type: String, required: false },
+        textRu: { type: String, required: false },
         textEn: { type: String }
     },
     parent: CategoryParentSchema,
@@ -45,12 +45,12 @@ const CategorySchema = new Schema({
 });
 
 const ProductSchema = new Schema({
-    id: { type: Number, required: true },
+    id: { type: Number, required: false },
     name: {
-        id: { type: Number, required: true },
-        textUzLat: { type: String, required: true },
-        textUzCyr: { type: String, required: true },
-        textRu: { type: String, required: true }
+        id: { type: Number, required: false },
+        textUzLat: { type: String, required: false },
+        textUzCyr: { type: String, required: false },
+        textRu: { type: String, required: false }
     },
     brand: {
         id: { type: Number, },

@@ -42,7 +42,7 @@ let executeBtn = {
 }
 
 let adminBtn = {
-    "Kirish uchun tasdiqlash 📩": {
+    "📩 Kirish uchun tasdiqlash": {
         selfExecuteFn: async ({ chat_id }) => {
             let users = await User.find({ confirmed: false })
             updateStep(chat_id, 1)
@@ -63,7 +63,7 @@ let adminBtn = {
             return get(user, 'job_title') == 'Admin' && get(user, 'confirmed')
         },
     },
-    "Foydalanuvchilar 👥": {
+    "👥 Foydalanuvchilar": {
         selfExecuteFn: async ({ chat_id }) => {
             let users = await User.find({ confirmed: true, chat_id: { $ne: chat_id } })
             updateStep(chat_id, 1)
@@ -84,7 +84,7 @@ let adminBtn = {
             return get(user, 'job_title') == 'Admin' && get(user, 'confirmed')
         },
     },
-    "Foydalanuvchini izlash 🔍": {
+    "🔍 Foydalanuvchini izlash": {
         selfExecuteFn: async ({ chat_id }) => {
             updateStep(chat_id, 10)
         },
@@ -101,7 +101,7 @@ let adminBtn = {
             },
         },
     },
-    "Test boshqaruvi 📋": {
+    "📋 Test boshqaruvi": {
         selfExecuteFn: async ({ chat_id }) => {
             let catalog = await Catalog.find()
             if (catalog.length == 0) {
@@ -241,7 +241,6 @@ let adminTestManagementBtn = {
                         });
                     }
                     catch (e) {
-                        console.log('catch')
                         bot.sendMessage(chat_id, text, { ...btn, parse_mode: 'HTML' });
                     }
                 } else {
@@ -258,4 +257,45 @@ let adminTestManagementBtn = {
     },
 }
 
-module.exports = { adminBtn, executeBtn, adminTestManagementBtn }
+
+let userBtn = {
+    "📦 Mahsulotlar bo'yicha ma'lumot": {
+        selfExecuteFn: async ({ chat_id }) => {
+            let catalog = await Catalog.find()
+            if (catalog.length == 0) {
+                let deleteMessage = await sendMessageHelper(chat_id, 'Loading...')
+                let newCatalog = await ferroController.getPageContent()
+                let data = get(newCatalog, 'components[0].component.categories', []).map(item => {
+                    return { ...item, ...item.category }
+                })
+                await Catalog.insertMany(data);
+                catalog = data
+                bot.deleteMessage(chat_id, deleteMessage.message_id)
+            }
+            let catalogBtn = catalog.map(item => {
+                return { name: get(item, 'name.textUzLat'), id: get(item, 'id') }
+            }).filter(el => !uncategorizedProduct.includes(el.id))
+
+            let directProduct = catalog.map(item => {
+                return { name: get(item, 'name.textUzLat'), id: get(item, 'id') }
+            }).filter(el => uncategorizedProduct.includes(el.id))
+
+            let btnCatalog = await dataConfirmBtnEmp(chat_id, catalogBtn, 1, 'catalogAdmin')
+            let btnCategory = await dataConfirmBtnEmp(chat_id, directProduct, 1, 'categoriesAdmin')
+
+            let btn = {
+                reply_markup: {
+                    inline_keyboard: [...get(btnCatalog, 'reply_markup.inline_keyboard', []), ...get(btnCategory, 'reply_markup.inline_keyboard', [])].filter(item => item[0].callback_data != 'backToCatalog'),
+                    resize_keyboard: true
+                }
+            }
+            sendMessageHelper(chat_id, `Mahsulotlar katalogi 🔧`, btn)
+        },
+        middleware: async ({ chat_id }) => {
+            let user = await infoUser({ chat_id })
+            return get(user, 'job_title') == 'User' && get(user, 'confirmed')
+        },
+    },
+}
+
+module.exports = { adminBtn, executeBtn, adminTestManagementBtn, userBtn }

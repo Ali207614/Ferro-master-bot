@@ -25,19 +25,19 @@ const adminBtn = {
         keyboard: [
             [
                 {
-                    text: "Foydalanuvchilar 👥",
+                    text: "👥 Foydalanuvchilar",
                 },
                 {
-                    text: "Test boshqaruvi 📋",
+                    text: "📋 Test boshqaruvi",
                 },
             ],
             [
                 {
-                    text: "Foydalanuvchini izlash 🔍",
+                    text: "🔍 Foydalanuvchini izlash",
                 },
 
                 {
-                    text: "Kirish uchun tasdiqlash 📩",
+                    text: "📩 Kirish uchun tasdiqlash",
                 },
             ],
         ],
@@ -65,7 +65,18 @@ const userBtn = {
         keyboard: [
             [
                 {
-                    text: "User",
+                    text: "📦 Mahsulotlar bo'yicha ma'lumot",
+                },
+                {
+                    text: "📊 Mening natijalarim",
+                },
+            ],
+            [
+                {
+                    text: "🌐 Umumiy Natijalar",
+                },
+                {
+                    text: "⏳ Yopilmagan Testlar",
                 },
             ],
         ],

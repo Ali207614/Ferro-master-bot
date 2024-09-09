@@ -30,7 +30,9 @@ const dataConfirmBtnEmp = async (chat_id = '', list = [], count = 1, cbName = ''
         'userList': 'paginationUserList',
         'userListSearch': 'paginationUserListSearch',
         'categoriesAdmin': "paginationCategoriesAdmin",
-        'productAdmin': "paginationProductAdmin"
+        'productAdmin': "paginationProductAdmin",
+        'productUser': "paginationProductUser",
+        'childProduct': "paginationChildProduct"
     }
 
     let backCb = {
@@ -41,6 +43,14 @@ const dataConfirmBtnEmp = async (chat_id = '', list = [], count = 1, cbName = ''
         'productAdmin': {
             text: `🔙 Kategoriyaga qaytish`,
             callback_data: 'backToCategory'
+        },
+        'productUser': {
+            text: `🔙 Kategoriyaga qaytish`,
+            callback_data: 'backToCategory'
+        },
+        'childProduct': {
+            text: `🔙 Mahsulotga qaytish`,
+            callback_data: 'backToChildProduct'
         }
     }
 
