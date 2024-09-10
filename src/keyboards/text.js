@@ -202,5 +202,66 @@ function generateProductText(product) {
 }
 
 
+function generateTestText(question, date) {
+    const confirmationMessage = `
+📝 <b>Testlar haqida ma'lumot:</b>
 
-module.exports = { newUserInfo, updateUserInfo, confirmLoginText, deleteUserInfo, userDeleteInfo, confirmTestAdmin, TestAdminInfo, TestInfo, generateProductText }
+📦 <b>Mahsulot joyi:</b> ➡️ ${get(question, '[0].category.parent.name.textUzLat', 'Kategoriya')} > ${get(question, '[0].category.name.textUzLat', 'Subkategoriya')}
+🔢 <b>Bosqich nomi:</b> 🏷️ ${get(question, '[0].name.textUzLat', 'Bosqich nomi')}
+    
+❓ <b>Umumiy savollar soni:</b> ${question?.length || 0} ta
+    
+🎓 <b>Baholovchi</b> : Mavjud emas
+`;
+
+    if (date) {
+        const formattedDate = new Date(date).toLocaleString('uz-UZ', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: 'numeric'
+        });
+        return `${confirmationMessage}\n\n📅 <b>Boshlangan vaqt:</b> ${formattedDate}`;
+    }
+
+    return confirmationMessage
+}
+
+
+function generateTestResultText({ question, totalQuestions, answers = [], startDate, endDate }) {
+    // To'g'ri javoblarning foizini hisoblash
+    let incorrectAnswers = answers.filter(item => !item.isCorrect).length
+    let correctAnswers = answers.filter(item => item.isCorrect).length
+    const correctPercentage = ((correctAnswers / totalQuestions) * 100).toFixed(2);
+
+    const timeDifference = new Date(endDate) - new Date(startDate); // Millisekundlarda farq
+    const timeSpentMinutes = Math.floor(timeDifference / 60000); // To'liq minutlarni hisoblash
+    const timeSpentSeconds = Math.floor((timeDifference % 60000) / 1000); // Qolgan sekundlarni hisoblas
+
+    const formattedDate = new Date(endDate).toLocaleString('uz-UZ', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric'
+    });
+
+    return `
+📝 <b>Test natijalari:</b>
+
+📦 <b>Mahsulot joyi:</b> ➡️ ${get(question, 'category.parent.name.textUzLat', 'Kategoriya')} > ${get(question, 'category.name.textUzLat', 'Subkategoriya')}
+🔢 <b>Bosqich nomi:</b> 🏷️ ${get(question, 'name.textUzLat', 'Bosqich nomi')}
+
+📊 <b>Umumiy savollar soni:</b> ${totalQuestions} ta
+✅ <b>To'g'ri javoblar:</b> ${correctAnswers} ta
+❌ <b>Xato javoblar:</b> ${incorrectAnswers} ta
+📈 <b>To'g'ri javoblar foizi:</b> ${correctPercentage}% 
+⏳ <b>Ketgan vaqt:</b> ${timeSpentMinutes} minut ${timeSpentSeconds} sekund
+
+📅 <b>Test tugagan sanasi:</b> ${formattedDate}
+    `;
+}
+
+
+module.exports = { newUserInfo, updateUserInfo, confirmLoginText, deleteUserInfo, userDeleteInfo, confirmTestAdmin, TestAdminInfo, TestInfo, generateProductText, generateTestText, escapeMarkdown, generateTestResultText }

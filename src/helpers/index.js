@@ -175,6 +175,20 @@ let updateThenFn = async (id) => {
 const sleepNow = (delay) =>
     new Promise((resolve) => setTimeout(resolve, delay));
 
+
+function filterAndShuffleQuestions(questions, excludedIds = []) {
+    excludedIds = excludedIds.map(item => Number(item))
+    const filteredQuestions = questions.filter(q => !excludedIds.includes(q.id));
+
+    // 2. Tasodifiy joylashtiramiz (shuffle)
+    for (let i = filteredQuestions.length - 1; i > 0; i--) {
+        const randomIndex = Math.floor(Math.random() * (i + 1));
+        [filteredQuestions[i], filteredQuestions[randomIndex]] = [filteredQuestions[randomIndex], filteredQuestions[i]];
+    }
+
+    return filteredQuestions;
+}
+
 module.exports = {
     parseDate,
     formatLocalDateToISOString,
@@ -191,4 +205,5 @@ module.exports = {
     updateQuestion,
     updateThenFn,
     sleepNow,
+    filterAndShuffleQuestions
 }

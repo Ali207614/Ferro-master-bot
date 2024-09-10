@@ -1,15 +1,16 @@
 const { get } = require("lodash")
 const { bot, rolesList, emoji, uncategorizedProduct } = require("../config")
 const ferroController = require("../controllers/ferroController")
-const { infoUser, updateUser, deleteUser, sendMessageHelper, updateCustom, updateBack, updateStep, executeUpdateFn, updateThenFn, sleepNow, updateQuestion } = require("../helpers")
+const { infoUser, updateUser, deleteUser, sendMessageHelper, updateCustom, updateBack, updateStep, executeUpdateFn, updateThenFn, sleepNow, updateQuestion, filterAndShuffleQuestions } = require("../helpers")
 const { empDynamicBtn } = require("../keyboards/function_keyboards")
 const { dataConfirmBtnEmp } = require("../keyboards/inline_keyboards")
 const { mainMenuByRoles, option, adminBtn } = require("../keyboards/keyboards")
-const { updateUserInfo, newUserInfo, confirmLoginText, userDeleteInfo, TestAdminInfo, TestInfo, generateProductText } = require("../keyboards/text")
+const { updateUserInfo, newUserInfo, confirmLoginText, userDeleteInfo, TestAdminInfo, TestInfo, generateProductText, generateTestText, escapeMarkdown, generateTestResultText } = require("../keyboards/text")
 const Catalog = require("../models/Catalog")
 const ChildProduct = require("../models/ChildProduct")
 const Product = require("../models/Product")
 const Question = require("../models/Question")
+const TestResult = require("../models/TestResult")
 const User = require("../models/User")
 require('dotenv').config();
 
@@ -946,11 +947,21 @@ let userCallback = {
             })
 
             let btn = await dataConfirmBtnEmp(chat_id, productBtn, 2, 'childProduct')
+            let questions = await Question.find({ isDeleted: false, productId: data[1] })
+            if (questions.length) {
+                let testResult = await TestResult.find({ productId: data[1], full: true })
+                // confirm 0 tasdiqlanmagan , 1 tasdiqlangan 2 reject bo'lgan 
+                let textObj = {
+                    '0': "⏳ Test tasdiqlanmagan",
+                    '1': "✅ Test tasdiqlangan",
+                    '2': "🔄 Testni qayta topshirish"
+                }
+                btn.reply_markup.inline_keyboard = [...btn.reply_markup.inline_keyboard, [{
+                    text: testResult.length ? textObj[Math.max(...testResult.map(item => item.confirm))] : `📝 Testni boshlash`,
+                    callback_data: 'startTestConfirm'
+                }]]
+            }
 
-            btn.reply_markup.inline_keyboard = [...btn.reply_markup.inline_keyboard, [{
-                text: ` 📝 Testni boshlash`,
-                callback_data: 'startTest'
-            }]]
 
             bot.editMessageText(text, {
                 chat_id: chat_id,
@@ -961,6 +972,7 @@ let userCallback = {
 
             updateCustom(chat_id, {
                 childProduct: product,
+                selectedProduct: { id: data[1] }
             })
 
             return
@@ -1003,28 +1015,6 @@ let userCallback = {
                 ...btn
             })
             return
-
-            // let user = await infoUser({ chat_id })
-            // let product = get(user, 'custom.childProduct', [])
-            // let text = `*🛠️ Mahsulotni tanlang*\n\n` +
-            //     `*🔍 Mahsulot joyi*: \`${get(product, '[0].parentProduct.category.parent.name.textUzLat', '')} > ${get(product, '[0].parentProduct.category.name.textUzLat')} > ${get(product, '[0].parentProduct.name.textUzLat')}\`\n\n` +
-            //     `Iltimos, quyidagi ichki mahsulotlardan birini tanlang`
-            // let productBtn = product.filter(item => !item.isDisabled).map(item => {
-            //     return { name: get(item, 'name.textUzLat', '-'), id: get(item, 'id') }
-            // })
-            // let pagination = data[1] == 'prev' ? { prev: +data[2] - 10, next: data[2] } : { prev: data[2], next: +data[2] + 10 }
-
-            // let btn = await dataConfirmBtnEmp(chat_id, productBtn, 2, 'childProduct', pagination)
-
-            // bot.editMessageText(text, {
-            //     chat_id: chat_id,
-            //     message_id: get(msg, 'message.message_id'),
-            //     parse_mode: 'MarkdownV2',
-            //     ...btn
-            // })
-            // updateCustom(chat_id, {
-            //     childProduct: product,
-            // })
         },
         middleware: async ({ chat_id, id }) => {
             let user = await infoUser({ chat_id })
@@ -1053,6 +1043,16 @@ let userCallback = {
                     callback_data: 'backToCatalog'
                 }]]
             }
+
+            try {
+                if (get(user, 'custom.productMessageId')) {
+                    await bot.deleteMessage(chat_id, user.custom?.productMessageId);
+                    updateCustom(chat_id, { productMessageId: '' })
+                }
+            } catch (error) {
+                console.error('Xabarni o\'chirishda xatolik:', error.message);
+            }
+
             bot.editMessageText(text, {
                 chat_id: chat_id,
                 message_id: get(msg, 'message.message_id'),
@@ -1080,6 +1080,15 @@ let userCallback = {
             let pagination = data[1] == 'prev' ? { prev: +data[2] - 10, next: data[2] } : { prev: data[2], next: +data[2] + 10 }
             let btn = await dataConfirmBtnEmp(chat_id, productBtn, 2, 'childProduct', pagination)
 
+
+            let questions = await Question.find({ isDeleted: false, productId: get(user, 'custom.selectedProduct.id') })
+            if (questions.length) {
+                btn.reply_markup.inline_keyboard = [...btn.reply_markup.inline_keyboard, [{
+                    text: `📝 Testni boshlash`,
+                    callback_data: 'startTestConfirm'
+                }]]
+            }
+
             bot.editMessageText(text, {
                 chat_id: chat_id,
                 message_id: get(msg, 'message.message_id'),
@@ -1097,7 +1106,6 @@ let userCallback = {
     },
     childProduct: {
         selfExecuteFn: async ({ chat_id, data, msg }) => {
-
             let user = await infoUser({ chat_id });
             let deleteMessage = await sendMessageHelper(chat_id, 'Loading...')
 
@@ -1106,25 +1114,34 @@ let userCallback = {
             let text = generateProductText(childProduct)
             let updateId;
 
-            try {
-                if (get(user, 'custom.productMessageId')) {
-                    await bot.deleteMessage(chat_id, user.custom?.productMessageId);
+            if (get(user, 'custom.productMessageId')) {
+                if (get(childProduct, 'parentProduct.photos[0].photo.url', '')) {
+                    await bot.editMessageCaption(text, {
+                        chat_id: chat_id,
+                        message_id: get(user, 'custom.productMessageId'),
+                        parse_mode: 'MarkdownV2',
+                    });
+                } else {
+                    await bot.editMessageText(text, {
+                        chat_id: chat_id,
+                        message_id: get(user, 'custom.productMessageId'),
+                        parse_mode: 'MarkdownV2'
+                    })
                 }
-            } catch (error) {
-                console.error('Xabarni o\'chirishda xatolik:', error.message);
             }
-
-            if (get(childProduct, 'parentProduct.photos[0].photo.url', '')) {
-                updateId = await bot.sendPhoto(chat_id, photoUrl, {
-                    caption: text,
-                    parse_mode: 'MarkdownV2',
-                });
-            } else {
-                updateId = await sendMessageHelper(chat_id, text, { parse_mode: 'MarkdownV2' });
+            else {
+                if (get(childProduct, 'parentProduct.photos[0].photo.url', '')) {
+                    updateId = await bot.sendPhoto(chat_id, photoUrl, {
+                        caption: text,
+                        parse_mode: 'MarkdownV2',
+                    });
+                } else {
+                    updateId = await sendMessageHelper(chat_id, text, { parse_mode: 'MarkdownV2' });
+                }
+                updateCustom(chat_id, { productMessageId: updateId.message_id });
             }
             bot.deleteMessage(chat_id, deleteMessage.message_id)
 
-            updateCustom(chat_id, { productMessageId: updateId.message_id });
 
 
             return
@@ -1136,9 +1153,242 @@ let userCallback = {
     },
 }
 
+let userStartTestCallback = {
+    startTestConfirm: {
+        selfExecuteFn: async ({ chat_id, data, msg }) => {
+            let user = await infoUser({ chat_id });
+            let questions = await Question.find({ isDeleted: false, productId: get(user, 'custom.selectedProduct.id') })
+            if (questions.length) {
+                let btn = await dataConfirmBtnEmp(chat_id,
+                    [
+                        { name: '🚀 Boshlash', id: `start#${get(user, 'custom.selectedProduct.id')}` },
+                        { name: '❌ Bekor qilish', id: `cancel#${get(user, 'custom.selectedProduct.id')}` }
+                    ], 2, 'startTest')
+                let text = generateTestText(questions)
+                await sendMessageHelper(chat_id, text, { ...btn, parse_mode: 'HTML' })
+                return
+            }
+            return sendMessageHelper(chat_id, 'Mavjud emas')
+        },
+        middleware: async ({ chat_id, id }) => {
+            let user = await infoUser({ chat_id })
+            return get(user, 'job_title') == 'User'
+        },
+    },
+    startTest: {
+        selfExecuteFn: async ({ chat_id, data, msg }) => {
+            let user = await infoUser({ chat_id });
+            let questions = await Question.find({ isDeleted: false, productId: get(user, 'custom.selectedProduct.id') })
+            if (data[1] == 'cancel') {
+                bot.deleteMessage(chat_id, get(msg, 'message.message_id'))
+                return
+            }
+            if (questions.length) {
+                questions = filterAndShuffleQuestions(questions, [])
+
+                let textTest = generateTestText(questions, new Date())
+                let btnTest = empDynamicBtn([])
+
+                bot.deleteMessage(chat_id, get(msg, 'message.message_id'))
+                await sendMessageHelper(chat_id, textTest, { ...btnTest, parse_mode: "HTML" })
+                await sleepNow(300)
+
+                let oneQuestion = questions[0]
+                let photoUrl = get(oneQuestion, 'photo[0].file_id')
+                let text = `1️⃣\\-*Savol* : ${escapeMarkdown(get(oneQuestion, 'answerText', '-'))}`
+                let btnList = filterAndShuffleQuestions(get(oneQuestion, 'answers', []).map(item => {
+                    return { name: item, id: `${oneQuestion.id}#${item == oneQuestion.correct}` }
+                }))
+                let btn = await dataConfirmBtnEmp(chat_id, btnList, Math.ceil(btnList.length / 2), 'test')
+                let messageId;
+                if (photoUrl) {
+                    try {
+                        messageId = await bot.sendPhoto(chat_id, photoUrl, {
+                            caption: text,
+                            parse_mode: 'MarkdownV2',
+                            ...btn
+                        });
+                    } catch (e) {
+                        messageId = await sendMessageHelper(chat_id, text, { ...btn, parse_mode: 'MarkdownV2' });
+                    }
+                }
+                else {
+                    messageId = await sendMessageHelper(chat_id, text, { ...btn, parse_mode: 'MarkdownV2' });
+                }
+
+                updateCustom(chat_id, {
+                    test: {
+                        productId: get(user, 'custom.selectedProduct.id'),
+                        startDate: new Date(),
+                        messageId: messageId.message_id
+                    }
+                })
+                return
+            }
+            return sendMessageHelper(chat_id, 'Mavjud emas')
+        },
+        middleware: async ({ chat_id, id }) => {
+            let user = await infoUser({ chat_id })
+            return get(user, 'job_title') == 'User'
+        },
+    },
+    test: {
+        selfExecuteFn: async ({ chat_id, data, msg }) => {
+            let user = await infoUser({ chat_id });
+            let questions = await Question.find({ isDeleted: false, productId: get(user, 'custom.selectedProduct.id') })
+            let totalQuestions = questions
+            if (questions.length) {
+                let currentQuest = questions.find(item => item?.id == data[1])
+
+                updateCustom(chat_id, {
+                    answers: [
+                        ...get(user, 'custom.answers', []),
+                        {
+                            id: data[1],
+                            text: get(currentQuest, 'answerText'),
+                            isCorrect: data[2] === 'true',
+                            correct: get(currentQuest, 'correct')
+                        }
+                    ]
+                })
+                questions = filterAndShuffleQuestions(questions, [...get(user, 'custom.answers', []).map(item => Number(item.id)), data[1]])
+                if (questions.length == 0) {
+
+                    let endDate = new Date()
+                    let answers = [
+                        ...get(user, 'custom.answers', []),
+                        {
+                            id: data[1],
+                            text: get(currentQuest, 'answerText'),
+                            isCorrect: data[2] === 'true',
+                            correct: get(currentQuest, 'correct')
+                        }
+                    ]
+                    let finalTex = generateTestResultText(
+                        {
+                            question: currentQuest,
+                            totalQuestions: totalQuestions.length,
+                            answers,
+                            startDate: get(user, 'custom.test.startDate', new Date()),
+                            endDate
+                        },
+                    )
+                    await sendMessageHelper(chat_id, finalTex, { ...await mainMenuByRoles({ chat_id }), parse_mode: "HTML" })
+
+                    let full = answers.filter(item => item.isCorrect).length == totalQuestions.length
+
+                    let testResult = new TestResult({
+                        chat_id,
+                        productId: totalQuestions[0].productId,
+                        name: {
+                            id: totalQuestions[0].id,
+                            textUzLat: totalQuestions[0].name.textUzLat,
+                            textUzCyr: totalQuestions[0].name.textUzCyr,
+                            textRu: totalQuestions[0].name.textRu
+                        },
+                        category: totalQuestions[0].category,
+                        startDate: get(user, 'custom.test.startDate', new Date()),
+                        endDate,
+                        answers,
+                        full
+                    });
+                    // confirm 0 tasdiqlanmagan , 1 tasdiqlangan 2 reject bo'lgan 
+
+                    updateCustom(chat_id, {
+                        test: {},
+                        answers: []
+                    })
+
+                    await testResult.save();
+                    if (full) {
+                        await sendMessageHelper(chat_id, `Masterga jo'natildi`, await mainMenuByRoles({ chat_id }))
+                    }
+
+
+                    await postThenFn({ user, chat_id })
+
+                    return
+                }
+                await helperTestCallback({ user, chat_id, questions })
+                return
+            }
+            return sendMessageHelper(chat_id, 'Mavjud emas')
+        },
+        middleware: async ({ chat_id, id }) => {
+            let user = await infoUser({ chat_id })
+            return get(user, 'job_title') == 'User' && get(user, 'custom.test.productId') && id == get(user, 'custom.test.messageId')
+        },
+    }
+
+}
+
+
+let postThenFn = async ({ user, chat_id }) => {
+    let categories = get(user, 'custom.categories', [])
+    let product = get(user, 'custom.product', [])
+    let text = `*🛠️ Mahsulotni tanlang*\n\n` +
+        `*🔍 Mahsulot joyi*: \`${get(categories, 'name.textUzLat', '')} > ${get(product, '[0].category.name.textUzLat')}\`\n\n` +
+        `Iltimos, quyidagi mahsulotlardan birini tanlang:`
+
+
+
+    let productBtn = product.filter(item => !item.isDisabled).map(item => {
+        return { name: get(item, 'name.textUzLat', '-'), id: get(item, 'id') }
+    })
+    let obj = {
+        'User': 'productUser',
+        'Admin': 'productAdmin'
+    }
+    let btn = await dataConfirmBtnEmp(chat_id, productBtn, 2, obj[get(user, 'job_title')])
+    if (uncategorizedProduct.includes(Number(get(product, '[0].category.id', '0')))) {
+        btn.reply_markup.inline_keyboard = [...btn.reply_markup.inline_keyboard.filter(item => item[0].callback_data != 'backToCategory'), [{
+            text: `🔙 Katalogga qaytish`,
+            callback_data: 'backToCatalog'
+        }]]
+    }
+
+    await sendMessageHelper(chat_id, text, { ...btn, parse_mode: 'MarkdownV2' })
+}
+
+let helperTestCallback = async ({ user, chat_id, questions }) => {
+    let oneQuestion = questions[0]
+    let photoUrl = get(oneQuestion, 'photo[0].file_id')
+    let text = `1️⃣\\-*Savol* : ${escapeMarkdown(get(oneQuestion, 'answerText', '-'))}`
+
+    let btnList = filterAndShuffleQuestions(get(oneQuestion, 'answers', []).map(item => {
+        return { name: item, id: `${oneQuestion.id}#${item == oneQuestion.correct}` }
+    }))
+
+    let btn = await dataConfirmBtnEmp(chat_id, btnList, Math.ceil(btnList.length / 2), 'test')
+    let messageId;
+    if (photoUrl) {
+        try {
+            messageId = await bot.sendPhoto(chat_id, photoUrl, {
+                caption: text,
+                parse_mode: 'MarkdownV2',
+                ...btn
+            });
+        } catch (e) {
+            messageId = await sendMessageHelper(chat_id, text, { ...btn, parse_mode: 'MarkdownV2' });
+        }
+    }
+    else {
+        messageId = await sendMessageHelper(chat_id, text, { ...btn, parse_mode: 'MarkdownV2' });
+    }
+
+    updateCustom(chat_id, {
+        test: {
+            ...get(user, 'custom.test', {}),
+            messageId: messageId.message_id
+        }
+    })
+    return
+}
+
 module.exports = {
     adminCallBack,
     adminTestManagement,
     updateTestCallBack,
-    userCallback
+    userCallback,
+    userStartTestCallback
 }

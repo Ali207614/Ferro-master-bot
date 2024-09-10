@@ -6,7 +6,7 @@ const { dataConfirmBtnEmp } = require("../keyboards/inline_keyboards");
 const { option, mainMenuByRoles } = require("../keyboards/keyboards");
 const { newUserInfo } = require("../keyboards/text");
 const User = require("../models/User");
-const { adminCallBack, adminTestManagement, updateTestCallBack, userCallback } = require("../modules/callback_query");
+const { adminCallBack, adminTestManagement, updateTestCallBack, userCallback, userStartTestCallback } = require("../modules/callback_query");
 const { adminText, adminTestManagementStep, handleAnswerManagement } = require("../modules/step");
 const { adminBtn, executeBtn, adminTestManagementBtn, userBtn } = require("../modules/text");
 const b1Controller = require('./b1Controller')
@@ -43,7 +43,9 @@ class botConroller {
                         productMessageId: '',
                         in_process: false,
                         selectedProduct: {},
-                        updateId: ''
+                        updateId: '',
+                        test: {},
+                        answers: []
                     }
                 })
                 return
@@ -109,7 +111,8 @@ class botConroller {
                 ...adminCallBack,
                 ...adminTestManagement,
                 ...updateTestCallBack,
-                ...userCallback
+                ...userCallback,
+                ...userStartTestCallback
             }
             if (user) {
                 if (callbackTree[data[0]]) {
@@ -117,7 +120,8 @@ class botConroller {
                         adminCallBack,
                         adminTestManagement,
                         updateTestCallBack,
-                        userCallback
+                        userCallback,
+                        userStartTestCallback
                     ]
                     let execute = callbackTreeList.find(item => item[data[0]] && item[data[0]]?.middleware({ chat_id, data, msgText: msg.text, id: get(msg, 'message.message_id', 0) }))
                     execute = execute ? execute[data[0]] : {}

@@ -21,6 +21,9 @@ let executeBtn = {
             if (get(user, 'back', []).length == 1) {
                 updateCustom(chat_id, { 'in_process': false, updateId: '' })
             }
+            if (get(user, 'custom.test.productId')) {
+                return false
+            }
             return get(user, 'back', []).length
         },
         next: {
