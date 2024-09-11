@@ -633,12 +633,21 @@ let adminTestManagement = {
                     // Javob berish
                     let createdBy = `${get(user, 'last_name', '-')} ${get(user, 'first_name')}`
                     let textMessage = TestAdminInfo({ chat_id, text, count, listAnswers, correct, product: question, createdBy })
+                    if (get(user, 'custom.selectedProduct.photo', []).length) {
+                        bot.editMessageCaption(textMessage, {
+                            chat_id: chat_id,
+                            message_id: get(msg, 'message.message_id'),
+                            parse_mode: 'HTML',
+                        });
+                    }
+                    else {
+                        bot.editMessageText(textMessage, {
+                            chat_id: chat_id,
+                            message_id: get(msg, 'message.message_id'),
+                            parse_mode: 'HTML',
+                        })
+                    }
 
-                    bot.editMessageCaption(textMessage, {
-                        chat_id: chat_id,
-                        message_id: get(msg, 'message.message_id'),
-                        parse_mode: 'HTML',
-                    });
 
 
                     bot.sendMessage(chat_id, 'Assalomu Aleykum', await mainMenuByRoles({ chat_id }))
@@ -960,16 +969,16 @@ let userCallback = {
                     return
                 }
                 let successResult = testResult.filter(item => item.confirm == 1)
-                let rejectResult = testResult.filter(item => item.confirm == 2)
 
-                let lastResult = successResult.length ? successResult[successResult.length - 1] : (rejectResult.length ? rejectResult[rejectResult.length - 1] : testResult[testResult.length - 1])
+                let lastResult = successResult.length ? successResult[successResult.length - 1] : testResult[testResult.length - 1]
                 let finalTex = generateTestResultText(
                     {
                         question: questions[0],
                         totalQuestions: questions.length,
                         answers: lastResult.answers,
                         startDate: lastResult.startDate,
-                        endDate: lastResult.endDate
+                        endDate: lastResult.endDate,
+                        status: lastResult?.confirm
                     },
                 )
                 if (get(user, 'custom.productMessageId')) {
@@ -1005,7 +1014,7 @@ let userCallback = {
                 }
                 let confirmTest = testResult.find(item => item.confirm == 1)
                 btn.reply_markup.inline_keyboard = [...btn.reply_markup.inline_keyboard, [{
-                    text: testResult.length ? textObj[confirmTest ? 1 : Math.max(...testResult.map(item => item.confirm))] : `📝 Testni boshlash`,
+                    text: testResult.length ? textObj[confirmTest ? 1 : testResult[testResult.length - 1].confirm] : `📝 Testni boshlash`,
                     callback_data: 'startTestConfirm'
                 }]]
             }
@@ -1020,7 +1029,8 @@ let userCallback = {
 
             updateCustom(chat_id, {
                 childProduct: product,
-                selectedProduct: { id: data[1] }
+                selectedProduct: { id: data[1] },
+                productMessageId: ''
             })
 
             return
@@ -1118,8 +1128,52 @@ let userCallback = {
         selfExecuteFn: async ({ chat_id, data, msg }) => {
             let user = await infoUser({ chat_id })
             let testResult = await TestResult.find({ productId: get(user, 'custom.selectedProduct.id'), full: true, chat_id })
+            let questions = await Question.find({ isDeleted: false, productId: get(user, 'custom.selectedProduct.id') })
 
             let product = get(user, 'custom.childProduct')
+
+            if (get(user, 'custom.statusBtn') == 2) {
+                if (testResult.length == 0) {
+                    if (get(user, 'custom.productMessageId')) {
+                        bot.editMessageText(`Mavjud emas`, {
+                            chat_id: chat_id,
+                            message_id: get(user, 'custom.productMessageId'),
+                            parse_mode: 'HTML',
+                        })
+                    }
+                    else {
+                        let message = await sendMessageHelper(chat_id, `Mavjud emas`, { parse_mode: "HTML" })
+                        updateCustom(chat_id, { productMessageId: message.message_id })
+                    }
+                    return
+                }
+                let successResult = testResult.filter(item => item.confirm == 1)
+
+                let lastResult = successResult.length ? successResult[successResult.length - 1] : testResult[testResult.length - 1]
+                let finalTex = generateTestResultText(
+                    {
+                        question: questions[0],
+                        totalQuestions: questions.length,
+                        answers: lastResult.answers,
+                        startDate: lastResult.startDate,
+                        endDate: lastResult.endDate,
+                        status: lastResult?.confirm
+                    },
+                )
+                if (get(user, 'custom.productMessageId')) {
+                    bot.editMessageText(finalTex, {
+                        chat_id: chat_id,
+                        message_id: get(user, 'custom.productMessageId'),
+                        parse_mode: 'HTML',
+                    })
+                }
+                else {
+                    let message = await sendMessageHelper(chat_id, finalTex, { parse_mode: "HTML" })
+                    updateCustom(chat_id, { productMessageId: message.message_id })
+                }
+
+                return
+            }
 
             let text = `*🛠️ Mahsulotni tanlang*\n\n` +
                 `*🔍 Mahsulot joyi*: \`${get(product, '[0].parentProduct.category.parent.name.textUzLat', '')} > ${get(product, '[0].parentProduct.category.name.textUzLat')} > ${get(product, '[0].parentProduct.name.textUzLat')}\`\n\n` +
@@ -1131,7 +1185,6 @@ let userCallback = {
             let btn = await dataConfirmBtnEmp(chat_id, productBtn, 2, 'childProduct', pagination)
 
 
-            let questions = await Question.find({ isDeleted: false, productId: get(user, 'custom.selectedProduct.id') })
             if (questions.length) {
                 // confirm 0 tasdiqlanmagan , 1 tasdiqlangan 2 reject bo'lgan 
                 let textObj = {
@@ -1141,7 +1194,7 @@ let userCallback = {
                 }
                 let confirmTest = testResult.find(item => item.confirm == 1)
                 btn.reply_markup.inline_keyboard = [...btn.reply_markup.inline_keyboard, [{
-                    text: testResult.length ? textObj[confirmTest ? 1 : Math.max(...testResult.map(item => item.confirm))] : `📝 Testni boshlash`,
+                    text: testResult.length ? textObj[confirmTest ? 1 : testResult[testResult.length - 1].confirm] : `📝 Testni boshlash`,
                     callback_data: 'startTestConfirm'
                 }]]
             }
@@ -1170,7 +1223,6 @@ let userCallback = {
             let photoUrl = `${process.env.ferro_api}/file/thumbnail/square/1280/` + get(childProduct, 'parentProduct.photos[0].photo.url', '');
             let text = generateProductText(childProduct)
             let updateId;
-
             if (get(user, 'custom.productMessageId')) {
                 if (get(childProduct, 'parentProduct.photos[0].photo.url', '')) {
                     await bot.editMessageCaption(text, {
@@ -1215,6 +1267,24 @@ let userStartTestCallback = {
         selfExecuteFn: async ({ chat_id, data, msg }) => {
             let user = await infoUser({ chat_id });
             let questions = await Question.find({ isDeleted: false, productId: get(user, 'custom.selectedProduct.id') })
+            let testResult = await TestResult.find({ productId: get(user, 'custom.selectedProduct.id'), full: true, chat_id })
+            let success = testResult.find(item => item.confirm == 1)
+            let pending = testResult[testResult.length - 1]?.confirm == '0'
+            if (!success && pending) {
+                if (get(user, 'custom.productMessageId')) {
+                    bot.editMessageText(`⏳ Tasdiqlanish kutilyapti`, {
+                        chat_id: chat_id,
+                        message_id: get(user, 'custom.productMessageId'),
+                        parse_mode: 'HTML',
+                    })
+                }
+                else {
+                    let message = await sendMessageHelper(chat_id, `⏳ Tasdiqlanish kutilyapti`, { parse_mode: "HTML" })
+                    updateCustom(chat_id, { productMessageId: message.message_id })
+                }
+
+                return
+            }
             if (questions.length) {
                 let btn = await dataConfirmBtnEmp(chat_id,
                     [
@@ -1222,7 +1292,20 @@ let userStartTestCallback = {
                         { name: '❌ Bekor qilish', id: `cancel#${get(user, 'custom.selectedProduct.id')}` }
                     ], 2, 'startTest')
                 let text = generateTestText(questions)
-                await sendMessageHelper(chat_id, text, { ...btn, parse_mode: 'HTML' })
+
+                if (get(user, 'custom.productMessageId')) {
+                    bot.editMessageText(text, {
+                        chat_id: chat_id,
+                        message_id: get(user, 'custom.productMessageId'),
+                        parse_mode: 'HTML',
+                        ...btn
+                    })
+                }
+                else {
+                    let message = await sendMessageHelper(chat_id, text, { ...btn, parse_mode: "HTML" })
+                    updateCustom(chat_id, { productMessageId: message.message_id })
+                }
+
                 return
             }
             return sendMessageHelper(chat_id, 'Mavjud emas')
@@ -1238,6 +1321,7 @@ let userStartTestCallback = {
             let questions = await Question.find({ isDeleted: false, productId: get(user, 'custom.selectedProduct.id') })
             if (data[1] == 'cancel') {
                 bot.deleteMessage(chat_id, get(msg, 'message.message_id'))
+                updateCustom(chat_id, { productMessageId: '' })
                 return
             }
             if (questions.length) {
@@ -1278,7 +1362,8 @@ let userStartTestCallback = {
                         productId: get(user, 'custom.selectedProduct.id'),
                         startDate: new Date(),
                         messageId: messageId.message_id
-                    }
+                    },
+                    productMessageId: ''
                 })
                 return
             }
@@ -1358,7 +1443,14 @@ let userStartTestCallback = {
 
                     await testResult.save();
                     if (full) {
-                        await sendMessageHelper(chat_id, `Masterga jo'natildi`, await mainMenuByRoles({ chat_id }))
+
+                        let testResultNow = await TestResult.find({ productId: get(user, 'custom.selectedProduct.id'), full: true, chat_id })
+                        let success = testResultNow.find(item => item.confirm == 1)
+
+                        if (!success) {
+                            await sendMessageHelper(chat_id, `Masterga jo'natildi`, await mainMenuByRoles({ chat_id }))
+                        }
+
                     }
 
 
@@ -1376,7 +1468,6 @@ let userStartTestCallback = {
             return get(user, 'job_title') == 'User' && get(user, 'custom.test.productId') && id == get(user, 'custom.test.messageId')
         },
     }
-
 }
 
 
@@ -1437,7 +1528,7 @@ let helperTestCallback = async ({ user, chat_id, questions }) => {
         test: {
             ...get(user, 'custom.test', {}),
             messageId: messageId.message_id
-        }
+        },
     })
     return
 }

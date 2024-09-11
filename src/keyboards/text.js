@@ -229,7 +229,7 @@ function generateTestText(question, date) {
 }
 
 
-function generateTestResultText({ question, totalQuestions, answers = [], startDate, endDate }) {
+function generateTestResultText({ question, totalQuestions, answers = [], startDate, endDate, status = '' }) {
     // To'g'ri javoblarning foizini hisoblash
     let incorrectAnswers = answers.filter(item => !item.isCorrect).length
     let correctAnswers = answers.filter(item => item.isCorrect).length
@@ -247,7 +247,13 @@ function generateTestResultText({ question, totalQuestions, answers = [], startD
         minute: 'numeric'
     });
 
-    return `
+    let statusObj = {
+        0: `⏳ Hali tekshirilmagan`,
+        1: `✅ Tekshirildi`,
+        2: `❌ Rad etilgan`
+    }
+
+    let text = `
 📝 <b>Test natijalari:</b>
 
 📦 <b>Mahsulot joyi:</b> ➡️ ${get(question, 'category.parent.name.textUzLat', 'Kategoriya')} > ${get(question, 'category.name.textUzLat', 'Subkategoriya')}
@@ -260,7 +266,12 @@ function generateTestResultText({ question, totalQuestions, answers = [], startD
 ⏳ <b>Ketgan vaqt:</b> ${timeSpentMinutes} minut ${timeSpentSeconds} sekund
 
 📅 <b>Test tugagan sanasi:</b> ${formattedDate}
-    `;
+
+`;
+    if (statusObj[status]) {
+        text += `🎓 <b>Baholovchi:</b> ${statusObj[status]}`
+    }
+    return text
 }
 
 

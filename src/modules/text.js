@@ -9,6 +9,7 @@ const Catalog = require("../models/Catalog")
 const User = require("../models/User")
 const Question = require("../models/Question")
 const { TestInfo } = require("../keyboards/text")
+const TestResult = require("../models/TestResult")
 
 let executeBtn = {
     "Orqaga": {
@@ -293,7 +294,7 @@ let userBtn = {
                 }
             }
             sendMessageHelper(chat_id, `Mahsulotlar katalogi 🔧`, btn)
-            updateCustom(chat_id, { statusBtn: 1 })
+            updateCustom(chat_id, { statusBtn: 1, productMessageId: '' })
         },
         middleware: async ({ chat_id }) => {
             let user = await infoUser({ chat_id })
@@ -332,6 +333,27 @@ let userBtn = {
             }
             sendMessageHelper(chat_id, `Mahsulotlar katalogi 🔧`, btn)
             updateCustom(chat_id, { statusBtn: 2, productMessageId: '' })
+        },
+        middleware: async ({ chat_id }) => {
+            let user = await infoUser({ chat_id })
+            return get(user, 'job_title') == 'User' && get(user, 'confirmed')
+        },
+    },
+    "🌐 Umumiy Natijalar": {
+        selfExecuteFn: async ({ chat_id }) => {
+            let testResult = await TestResult.find({ full: true, confirm: 1 })
+            if (testResult.length == 0) {
+                return await sendMessageHelper(chat_id, 'Mavjud emas')
+            }
+            let users = await User.find({ confirmed: true, chat_id: { $in: [...new Set(testResult.map(item => item.chat_id))] } })
+
+
+            let text = `🌐 Umumiy Natijalar\n\n`
+            for (let i = 0; i < users.length; i++) {
+                text += `${i + 1} : ${users[i].last_name} ${users[i].first_name}\n`
+            }
+
+            await sendMessageHelper(chat_id, text)
         },
         middleware: async ({ chat_id }) => {
             let user = await infoUser({ chat_id })
