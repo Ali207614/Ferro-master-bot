@@ -926,7 +926,11 @@ let updateTestCallBack = {
 let userCallback = {
     productUser: {
         selfExecuteFn: async ({ chat_id, data, msg }) => {
+            let user = await infoUser({ chat_id })
             let product = await ChildProduct.find({ 'parentProduct.id': data[1] })
+            let testResult = await TestResult.find({ productId: data[1], full: true, chat_id })
+            let questions = await Question.find({ isDeleted: false, productId: data[1] })
+
             if (product.length == 0) {
                 let deleteMessage = await sendMessageHelper(chat_id, 'Loading...')
                 let newProduct = await ferroController.getChildProduct(data[1])
@@ -939,6 +943,51 @@ let userCallback = {
                 sendMessagaHelper(chat_id, "Mavjud emas")
                 return
             }
+
+            if (get(user, 'custom.statusBtn') == 2) {
+                if (testResult.length == 0) {
+                    if (get(user, 'custom.productMessageId')) {
+                        bot.editMessageText(`Mavjud emas`, {
+                            chat_id: chat_id,
+                            message_id: get(user, 'custom.productMessageId'),
+                            parse_mode: 'HTML',
+                        })
+                    }
+                    else {
+                        let message = await sendMessageHelper(chat_id, `Mavjud emas`, { parse_mode: "HTML" })
+                        updateCustom(chat_id, { productMessageId: message.message_id })
+                    }
+                    return
+                }
+                let successResult = testResult.filter(item => item.confirm == 1)
+                let rejectResult = testResult.filter(item => item.confirm == 2)
+
+                let lastResult = successResult.length ? successResult[successResult.length - 1] : (rejectResult.length ? rejectResult[rejectResult.length - 1] : testResult[testResult.length - 1])
+                let finalTex = generateTestResultText(
+                    {
+                        question: questions[0],
+                        totalQuestions: questions.length,
+                        answers: lastResult.answers,
+                        startDate: lastResult.startDate,
+                        endDate: lastResult.endDate
+                    },
+                )
+                if (get(user, 'custom.productMessageId')) {
+                    bot.editMessageText(finalTex, {
+                        chat_id: chat_id,
+                        message_id: get(user, 'custom.productMessageId'),
+                        parse_mode: 'HTML',
+                    })
+                }
+                else {
+                    let message = await sendMessageHelper(chat_id, finalTex, { parse_mode: "HTML" })
+                    updateCustom(chat_id, { productMessageId: message.message_id })
+                }
+
+
+                return
+            }
+
             let text = `*🛠️ Mahsulotni tanlang*\n\n` +
                 `*🔍 Mahsulot joyi*: \`${get(product, '[0].parentProduct.category.parent.name.textUzLat', '')} > ${get(product, '[0].parentProduct.category.name.textUzLat')} > ${get(product, '[0].parentProduct.name.textUzLat')}\`\n\n` +
                 `Iltimos, quyidagi ichki mahsulotlardan birini tanlang`
@@ -947,17 +996,16 @@ let userCallback = {
             })
 
             let btn = await dataConfirmBtnEmp(chat_id, productBtn, 2, 'childProduct')
-            let questions = await Question.find({ isDeleted: false, productId: data[1] })
             if (questions.length) {
-                let testResult = await TestResult.find({ productId: data[1], full: true })
                 // confirm 0 tasdiqlanmagan , 1 tasdiqlangan 2 reject bo'lgan 
                 let textObj = {
                     '0': "⏳ Test tasdiqlanmagan",
                     '1': "✅ Test tasdiqlangan",
                     '2': "🔄 Testni qayta topshirish"
                 }
+                let confirmTest = testResult.find(item => item.confirm == 1)
                 btn.reply_markup.inline_keyboard = [...btn.reply_markup.inline_keyboard, [{
-                    text: testResult.length ? textObj[Math.max(...testResult.map(item => item.confirm))] : `📝 Testni boshlash`,
+                    text: testResult.length ? textObj[confirmTest ? 1 : Math.max(...testResult.map(item => item.confirm))] : `📝 Testni boshlash`,
                     callback_data: 'startTestConfirm'
                 }]]
             }
@@ -1069,6 +1117,8 @@ let userCallback = {
     paginationChildProduct: {
         selfExecuteFn: async ({ chat_id, data, msg }) => {
             let user = await infoUser({ chat_id })
+            let testResult = await TestResult.find({ productId: get(user, 'custom.selectedProduct.id'), full: true, chat_id })
+
             let product = get(user, 'custom.childProduct')
 
             let text = `*🛠️ Mahsulotni tanlang*\n\n` +
@@ -1083,8 +1133,15 @@ let userCallback = {
 
             let questions = await Question.find({ isDeleted: false, productId: get(user, 'custom.selectedProduct.id') })
             if (questions.length) {
+                // confirm 0 tasdiqlanmagan , 1 tasdiqlangan 2 reject bo'lgan 
+                let textObj = {
+                    '0': "⏳ Test tasdiqlanmagan",
+                    '1': "✅ Test tasdiqlangan",
+                    '2': "🔄 Testni qayta topshirish"
+                }
+                let confirmTest = testResult.find(item => item.confirm == 1)
                 btn.reply_markup.inline_keyboard = [...btn.reply_markup.inline_keyboard, [{
-                    text: `📝 Testni boshlash`,
+                    text: testResult.length ? textObj[confirmTest ? 1 : Math.max(...testResult.map(item => item.confirm))] : `📝 Testni boshlash`,
                     callback_data: 'startTestConfirm'
                 }]]
             }
