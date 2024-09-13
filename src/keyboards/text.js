@@ -202,7 +202,7 @@ function generateProductText(product) {
 }
 
 
-function generateTestText(question, date) {
+function generateTestText(question, master, date) {
     const confirmationMessage = `
 📝 <b>Testlar haqida ma'lumot:</b>
 
@@ -211,7 +211,7 @@ function generateTestText(question, date) {
     
 ❓ <b>Umumiy savollar soni:</b> ${question?.length || 0} ta
     
-🎓 <b>Baholovchi</b> : Mavjud emas
+🎓 <b>Baholovchi</b> : ${master ? get(master, 'last_name', '') + ' ' + get(master, 'first_name', '') : 'Mavjud emas'}
 `;
 
     if (date) {
@@ -254,7 +254,7 @@ function generateTestResultText({ question, totalQuestions, answers = [], startD
     }
 
     let text = `
-📝 <b>Test natijalari:</b>
+📝 <b>${statusObj[status] ? 'Oxirgi test natijangiz' : 'Test natijalari:'}</b>
 
 📦 <b>Mahsulot joyi:</b> ➡️ ${get(question, 'category.parent.name.textUzLat', 'Kategoriya')} > ${get(question, 'category.name.textUzLat', 'Subkategoriya')}
 🔢 <b>Bosqich nomi:</b> 🏷️ ${get(question, 'name.textUzLat', 'Bosqich nomi')}
@@ -268,9 +268,9 @@ function generateTestResultText({ question, totalQuestions, answers = [], startD
 📅 <b>Test tugagan sanasi:</b> ${formattedDate}
 
 `;
-    if (statusObj[status]) {
-        text += `🎓 <b>Baholovchi:</b> ${statusObj[status]}`
-    }
+    // if (statusObj[status]) {
+    //     text += `🎓 <b>Baholovchi:</b> ${statusObj[status]}`
+    // }
     return text
 }
 

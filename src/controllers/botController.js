@@ -15,6 +15,7 @@ class botConroller {
     async text(msg, chat_id) {
         try {
             let user = await infoUser({ chat_id });
+
             if (get(user, 'confirmed') === false) {
                 sendMessageHelper(chat_id, "Tasdiqlash uchun Adminga jo'natilgan", option)
                 return
@@ -36,18 +37,21 @@ class botConroller {
                     "Assalomu Aleykum",
                     get(user, 'confirmed') ? await mainMenuByRoles({ chat_id }) : option
                 );
-                updateUser(chat_id, {
-                    back: [],
-                    custom: {
-                        ...get(user, 'custom', {}),
-                        productMessageId: '',
-                        in_process: false,
-                        selectedProduct: {},
-                        updateId: '',
-                        test: {},
-                        answers: []
-                    }
-                })
+                if (user) {
+                    updateUser(chat_id, {
+                        back: [],
+                        custom: {
+                            ...get(user, 'custom', {}),
+                            productMessageId: '',
+                            in_process: false,
+                            selectedProduct: {},
+                            updateId: '',
+                            test: {},
+                            answers: []
+                        }
+                    })
+                }
+
                 return
             }
             else if (msg.text == '/info') {
@@ -159,11 +163,25 @@ class botConroller {
             let phone = get(msg, "contact.phone_number", "").replace(/\D/g, "");
             let deleteMessage = await sendMessageHelper(chat_id, 'Loading...')
             let sap_user = await b1Controller.getBusinessPartnerByPhone(phone);
+            console.log(sap_user)
 
             if (sap_user.length == 1) {
                 if (!rolesList.includes(sap_user[0].jobTitle)) {
                     sendMessageHelper(chat_id, 'Job title xato kiritilgan', option)
+                    bot.deleteMessage(chat_id, deleteMessage.message_id)
                     return
+                }
+                if (sap_user[0].jobTitle == 'User') {
+                    let master = await User.findOne({ emp_id: sap_user[0].empID, job_title: "Master" })
+                    if (!master) {
+                        sendMessageHelper(
+                            chat_id,
+                            "Master mavjud emas",
+                            option
+                        );
+                        bot.deleteMessage(chat_id, deleteMessage.message_id)
+                        return
+                    }
                 }
                 const newUser = new User({
                     chat_id: chat_id,
@@ -174,7 +192,8 @@ class botConroller {
                     first_name: sap_user[0].firstName,
                     last_name: sap_user[0].lastName,
                     back: [],
-                    lastMessageId: ''
+                    lastMessageId: '',
+                    master: sap_user[0].U_Master
                 });
                 await newUser.save();
 
