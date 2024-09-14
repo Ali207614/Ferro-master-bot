@@ -10,16 +10,34 @@ const User = require("../models/User");
 let adminText = {
     "10": {
         selfExecuteFn: async ({ chat_id, msgText }) => {
-            let users = await User.find({
-                confirmed: true,
-                chat_id: { $ne: chat_id },
-                $or: [
-                    { first_name: { $regex: msgText, $options: 'i' } },
-                    { last_name: { $regex: msgText, $options: 'i' } },
-                    { emp_id: isNaN(msgText) ? undefined : msgText },
-                    { mobile: { $regex: msgText, $options: 'i' } }
-                ]
-            }).lean();
+            let master = await infoUser({ chat_id })
+            let users;
+            if (get(master, 'job_title') == 'Master') {
+                users = await User.find({
+                    confirmed: true,
+                    // chat_id: { $ne: chat_id },
+                    master: master.emp_id,
+                    $or: [
+                        { first_name: { $regex: msgText, $options: 'i' } },
+                        { last_name: { $regex: msgText, $options: 'i' } },
+                        { emp_id: isNaN(msgText) ? undefined : msgText },
+                        { mobile: { $regex: msgText, $options: 'i' } }
+                    ]
+                }).lean();
+            }
+            else {
+                users = await User.find({
+                    confirmed: true,
+                    chat_id: { $ne: chat_id },
+                    $or: [
+                        { first_name: { $regex: msgText, $options: 'i' } },
+                        { last_name: { $regex: msgText, $options: 'i' } },
+                        { emp_id: isNaN(msgText) ? undefined : msgText },
+                        { mobile: { $regex: msgText, $options: 'i' } }
+                    ]
+                }).lean();
+            }
+
             updateCustom(chat_id, { search: msgText })
             if (users.length) {
                 let mappedUser = users.map(item => {
@@ -35,7 +53,7 @@ let adminText = {
         },
         middleware: async ({ chat_id }) => {
             let user = await infoUser({ chat_id })
-            return get(user, 'job_title') == 'Admin' && get(user, 'confirmed') && get(user, 'user_step') == 10
+            return ['Admin', 'Master'].includes(get(user, 'job_title')) && get(user, 'confirmed') && get(user, 'user_step') == 10
         },
     },
 }

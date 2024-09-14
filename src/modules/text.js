@@ -8,7 +8,7 @@ const { mainMenuByRoles } = require("../keyboards/keyboards")
 const Catalog = require("../models/Catalog")
 const User = require("../models/User")
 const Question = require("../models/Question")
-const { TestInfo } = require("../keyboards/text")
+const { TestInfo, generateTestResultText, generateTestResultTextConfirm } = require("../keyboards/text")
 const TestResult = require("../models/TestResult")
 
 let executeBtn = {
@@ -400,4 +400,82 @@ let userBtn = {
     },
 }
 
-module.exports = { adminBtn, executeBtn, adminTestManagementBtn, userBtn }
+
+let masterBtn = {
+    "👥 Foydalanuvchilar": {
+        selfExecuteFn: async ({ chat_id }) => {
+            let admin = await infoUser({ chat_id })
+            let users = await User.find({ confirmed: true, master: admin.emp_id })
+            updateStep(chat_id, 1)
+            if (users.length) {
+                let mappedUser = users.map(item => {
+                    return { name: `${item.last_name} ${item.first_name} ${emoji[item.job_title]}`, id: item.chat_id, sort: rolesList.indexOf(item.job_title) }
+                }).sort((a, b) => a.sort - b.sort)
+                let btn = await dataConfirmBtnEmp(chat_id, mappedUser, 1, 'userList')
+                let botId = await bot.sendMessage(chat_id, `Foydalanuvchilar ro'yxati 📋`, btn)
+                updateCustom(chat_id, { updateConfirmListId: botId.message_id })
+                return
+            }
+            let botId = await bot.sendMessage(chat_id, `Mavjud emas`)
+            return
+        },
+        middleware: async ({ chat_id }) => {
+            let user = await infoUser({ chat_id })
+            return get(user, 'job_title') == 'Master' && get(user, 'confirmed')
+        },
+    },
+    "🔍 Foydalanuvchini izlash": {
+        selfExecuteFn: async ({ chat_id }) => {
+            updateStep(chat_id, 10)
+        },
+        middleware: async ({ chat_id }) => {
+            let user = await infoUser({ chat_id })
+            return get(user, 'job_title') == 'Master' && get(user, 'confirmed')
+        },
+        next: {
+            text: ({ chat_id, data }) => {
+                return `Foydalanuvchi Ismi yoki ID yoki Telefon Raqamini kiriting`
+            },
+            btn: async ({ chat_id, data }) => {
+                return
+            },
+        },
+    },
+    "📊 Test natijalari": {
+        selfExecuteFn: async ({ chat_id }) => {
+            let admin = await infoUser({ chat_id })
+            let users = await User.find({ confirmed: true, master: admin.emp_id });
+            let chatIds = users.map(user => user.chat_id);
+            let testResult = await TestResult.find({ full: true, confirm: 0, chat_id: { $in: chatIds } });
+
+            if (testResult.length == 0) {
+                bot.sendMessage(chat_id, 'Mavjud emas')
+                return
+            }
+            for (let i = 0; i < testResult.length; i++) {
+                let finalTex = generateTestResultTextConfirm(
+                    {
+                        question: testResult[i],
+                        totalQuestions: testResult[i].answers.length,
+                        answers: testResult[i].answers,
+                        startDate: testResult[i].startDate,
+                        endDate: testResult[i].endDate,
+                        user: users.find(item => item.chat_id == testResult[i].chat_id)
+                    },
+                )
+
+
+                let btn = await dataConfirmBtnEmp(chat_id, [{ name: '✅ Ha', id: `1#${testResult[i].test_id}` }, { name: '❌ Bekor qilish', id: `2#${testResult[i].test_id}` }], 2, 'confirmTestResult')
+
+                bot.sendMessage(chat_id, (finalTex), { ...btn, parse_mode: 'HTML' })
+            }
+
+        },
+        middleware: async ({ chat_id }) => {
+            let user = await infoUser({ chat_id })
+            return get(user, 'job_title') == 'Master' && get(user, 'confirmed')
+        },
+    },
+}
+
+module.exports = { adminBtn, executeBtn, adminTestManagementBtn, userBtn, masterBtn }

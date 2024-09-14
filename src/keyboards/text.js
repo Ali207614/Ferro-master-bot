@@ -275,4 +275,43 @@ function generateTestResultText({ question, totalQuestions, answers = [], startD
 }
 
 
-module.exports = { newUserInfo, updateUserInfo, confirmLoginText, deleteUserInfo, userDeleteInfo, confirmTestAdmin, TestAdminInfo, TestInfo, generateProductText, generateTestText, escapeMarkdown, generateTestResultText }
+function generateTestResultTextConfirm({ question, totalQuestions, answers = [], startDate, endDate, status = '', user }) {
+    let incorrectAnswers = answers.filter(item => !item.isCorrect).length
+    let correctAnswers = answers.filter(item => item.isCorrect).length
+    const correctPercentage = ((correctAnswers / totalQuestions) * 100).toFixed(2);
+
+    const timeDifference = new Date(endDate) - new Date(startDate); // Millisekundlarda farq
+    const timeSpentMinutes = Math.floor(timeDifference / 60000); // To'liq minutlarni hisoblash
+    const timeSpentSeconds = Math.floor((timeDifference % 60000) / 1000); // Qolgan sekundlarni hisoblas
+
+    const formattedDate = new Date(endDate).toLocaleString('uz-UZ', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric'
+    });
+
+    let head = status ? status == 1 ? 'Test natijasi tasdiqlandi ✅' : 'Test natijasi bekor qilindi ❌' : 'Test natijasini tasdiqlaysizmi ?'
+
+    let text = `
+📝 <b>${head}</b>
+
+👤 <b>Test topshiruvchi:</b> ${get(user, 'last_name')} ${get(user, 'first_name')}
+
+📦 <b>Mahsulot joyi:</b> ➡️ ${get(question, 'category.parent.name.textUzLat', 'Kategoriya')} > ${get(question, 'category.name.textUzLat', 'Subkategoriya')}
+🔢 <b>Bosqich nomi:</b> 🏷️ ${get(question, 'name.textUzLat', 'Bosqich nomi')}
+
+📊 <b>Umumiy savollar soni:</b> ${totalQuestions} ta
+✅ <b>To'g'ri javoblar:</b> ${correctAnswers} ta
+❌ <b>Xato javoblar:</b> ${incorrectAnswers} ta
+📈 <b>To'g'ri javoblar foizi:</b> ${correctPercentage}% 
+⏳ <b>Ketgan vaqt:</b> ${timeSpentMinutes} minut ${timeSpentSeconds} sekund
+
+📅 <b>Test tugagan sanasi:</b> ${formattedDate}
+
+    `;
+    return text
+}
+
+module.exports = { newUserInfo, updateUserInfo, confirmLoginText, deleteUserInfo, userDeleteInfo, confirmTestAdmin, TestAdminInfo, TestInfo, generateProductText, generateTestText, escapeMarkdown, generateTestResultText, generateTestResultTextConfirm }

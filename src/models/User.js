@@ -12,7 +12,7 @@ const userSchema = new mongoose.Schema({
     back: { type: [mongoose.Schema.Types.Mixed], default: [] },
     custom: { type: mongoose.Schema.Types.Mixed, default: {} },
     lastMessageId: { type: Number, default: 1 },
-    master: { type: Number, required: true },
+    master: { type: Number, required: false },
     confirmed: { type: Boolean, default: false },
     confirmed_at: { type: Date }
 }, { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } });

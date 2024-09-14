@@ -51,7 +51,15 @@ const masterBtn = {
         keyboard: [
             [
                 {
-                    text: "Master shifu",
+                    text: "👥 Foydalanuvchilar",
+                },
+                {
+                    text: "🔍 Foydalanuvchini izlash",
+                },
+            ],
+            [
+                {
+                    text: "📊 Test natijalari",
                 },
             ],
         ],

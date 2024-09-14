@@ -1,11 +1,12 @@
 const { get } = require("lodash")
 const { bot, rolesList, emoji, uncategorizedProduct } = require("../config")
 const ferroController = require("../controllers/ferroController")
+const { generateTestResultExcel } = require("../excel")
 const { infoUser, updateUser, deleteUser, sendMessageHelper, updateCustom, updateBack, updateStep, executeUpdateFn, updateThenFn, sleepNow, updateQuestion, filterAndShuffleQuestions } = require("../helpers")
 const { empDynamicBtn } = require("../keyboards/function_keyboards")
 const { dataConfirmBtnEmp } = require("../keyboards/inline_keyboards")
 const { mainMenuByRoles, option, adminBtn } = require("../keyboards/keyboards")
-const { updateUserInfo, newUserInfo, confirmLoginText, userDeleteInfo, TestAdminInfo, TestInfo, generateProductText, generateTestText, escapeMarkdown, generateTestResultText } = require("../keyboards/text")
+const { updateUserInfo, newUserInfo, confirmLoginText, userDeleteInfo, TestAdminInfo, TestInfo, generateProductText, generateTestText, escapeMarkdown, generateTestResultText, generateTestResultTextConfirm } = require("../keyboards/text")
 const Catalog = require("../models/Catalog")
 const ChildProduct = require("../models/ChildProduct")
 const Product = require("../models/Product")
@@ -34,6 +35,9 @@ let adminCallBack = {
                             parse_mode: 'MarkdownV2'
                         })
                     }
+                    let btn = data[1] == 1 ? await mainMenuByRoles({ chat_id }) : option
+                    let text = updateUserInfo(newUser, data[1] == 1, admin)
+                    bot.sendMessage(data[2], text, btn)
                 }
                 else {
                     sendMessageHelper(chat_id, `Already Confirmed ✅`)
@@ -216,7 +220,18 @@ let adminCallBack = {
     'userList': {
         selfExecuteFn: async ({ chat_id, data }) => {
             let newUser = await User.findOne({ chat_id: data[1] })
-            let admin = await User.findOne({ chat_id })
+            let master = await User.findOne({ chat_id })
+            if (master.job_title == 'Master') {
+                let testResult = await TestResult.find({ chat_id: data[1] })
+                let filePath = await generateTestResultExcel(testResult, newUser)
+
+                await bot.sendDocument(chat_id, filePath, {
+                    caption: empDynamicBtn(),
+                    filename: 'Malumotlar.xlsx',
+                    contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                });
+                return
+            }
             if (newUser) {
                 let btn = await dataConfirmBtnEmp(chat_id, [{ name: "🗑 O'chirish", id: `1#${newUser.chat_id}` }, { name: '❌ Bekor qilish', id: `2#${newUser.chat_id}` }], 2, 'confirmDeleteUser')
                 await bot.sendMessage(chat_id, confirmLoginText(newUser), {
@@ -230,14 +245,25 @@ let adminCallBack = {
         },
         middleware: async ({ chat_id, id }) => {
             let user = await infoUser({ chat_id })
-            return get(user, 'job_title') == 'Admin'
+            return ['Admin', 'Master'].includes(get(user, 'job_title'))
         },
     },
 
     'userListSearch': {
         selfExecuteFn: async ({ chat_id, data }) => {
             let newUser = await User.findOne({ chat_id: data[1] })
-            let admin = await User.findOne({ chat_id })
+            let master = await User.findOne({ chat_id })
+            if (master.job_title == 'Master') {
+                let testResult = await TestResult.find({ chat_id: data[1] })
+                let filePath = await generateTestResultExcel(testResult, newUser)
+
+                await bot.sendDocument(chat_id, filePath, {
+                    caption: empDynamicBtn(),
+                    filename: 'Malumotlar.xlsx',
+                    contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                });
+                return
+            }
             if (newUser) {
                 let btn = await dataConfirmBtnEmp(chat_id, [{ name: "🗑 O'chirish", id: `1#${newUser.chat_id}` }, { name: '❌ Bekor qilish', id: `2#${newUser.chat_id}` }], 2, 'confirmDeleteUserSearch')
                 await bot.sendMessage(chat_id, confirmLoginText(newUser), {
@@ -251,7 +277,7 @@ let adminCallBack = {
         },
         middleware: async ({ chat_id, id }) => {
             let user = await infoUser({ chat_id })
-            return get(user, 'job_title') == 'Admin'
+            return ['Admin', 'Master'].includes(get(user, 'job_title'))
         },
     },
 
@@ -282,7 +308,13 @@ let adminCallBack = {
     "paginationUserList": {
         selfExecuteFn: async ({ chat_id, data }) => {
             let user = await infoUser({ chat_id })
-            let users = await User.find({ confirmed: true, chat_id: { $ne: chat_id } })
+            let users;
+            if (get(user, 'job_title') == 'Master') {
+                users = await User.find({ confirmed: true, master: user.emp_id })
+            }
+            else {
+                users = await User.find({ confirmed: true, chat_id: { $ne: chat_id } })
+            }
             let lastMessageId = get(user, 'custom.updateConfirmListId')
             let mappedUser = users.map(item => {
                 return { name: `${item.last_name} ${item.first_name} ${emoji[item.job_title]}`, id: item.chat_id, sort: rolesList.indexOf(item.job_title) }
@@ -300,23 +332,40 @@ let adminCallBack = {
         },
         middleware: async ({ chat_id }) => {
             let user = await infoUser({ chat_id })
-            return get(user, 'job_title') == 'Admin' && get(user, 'confirmed')
+            return ['Admin', 'Master'].includes(get(user, 'job_title')) && get(user, 'confirmed')
         },
     },
 
     "paginationUserListSearch": {
         selfExecuteFn: async ({ chat_id, data }) => {
             let user = await infoUser({ chat_id })
-            let users = await User.find({
-                confirmed: true,
-                chat_id: { $ne: chat_id },
-                $or: [
-                    { first_name: { $regex: get(user, 'custom.search'), $options: 'i' } },
-                    { last_name: { $regex: get(user, 'custom.search'), $options: 'i' } },
-                    { emp_id: isNaN(get(user, 'custom.search')) ? undefined : get(user, 'custom.search') },
-                    { mobile: { $regex: get(user, 'custom.search'), $options: 'i' } }
-                ]
-            }).lean();
+            let users;
+            if (get(user, 'job_title') == 'Master') {
+                users = await User.find({
+                    confirmed: true,
+                    chat_id: { $ne: chat_id },
+                    master: user.emp_id,
+                    $or: [
+                        { first_name: { $regex: get(user, 'custom.search'), $options: 'i' } },
+                        { last_name: { $regex: get(user, 'custom.search'), $options: 'i' } },
+                        { emp_id: isNaN(get(user, 'custom.search')) ? undefined : get(user, 'custom.search') },
+                        { mobile: { $regex: get(user, 'custom.search'), $options: 'i' } }
+                    ]
+                }).lean();
+            }
+            else {
+                users = await User.find({
+                    confirmed: true,
+                    chat_id: { $ne: chat_id },
+                    $or: [
+                        { first_name: { $regex: get(user, 'custom.search'), $options: 'i' } },
+                        { last_name: { $regex: get(user, 'custom.search'), $options: 'i' } },
+                        { emp_id: isNaN(get(user, 'custom.search')) ? undefined : get(user, 'custom.search') },
+                        { mobile: { $regex: get(user, 'custom.search'), $options: 'i' } }
+                    ]
+                }).lean();
+            }
+
             let lastMessageId = get(user, 'custom.updateConfirmListId')
             let mappedUser = users.map(item => {
                 return { name: `${item.last_name} ${item.first_name} ${emoji[item.job_title]}`, id: item.chat_id, sort: rolesList.indexOf(item.job_title) }
@@ -334,7 +383,7 @@ let adminCallBack = {
         },
         middleware: async ({ chat_id }) => {
             let user = await infoUser({ chat_id })
-            return get(user, 'job_title') == 'Admin' && get(user, 'confirmed')
+            return ['Admin', 'Master'].includes(get(user, 'job_title')) && get(user, 'confirmed')
         },
     },
 
@@ -400,9 +449,10 @@ let adminTestManagement = {
                 for (let i = 0; i < productIdList.length; i++) {
                     let oneQuestion = questions.find(item => item.productId == productIdList[i])
                     let tests = testResult.filter(item => item.productId == productIdList[i])
+
                     let success = tests.find(item => item.confirm == '1')
-                    let reject = tests.find(item => item.confirm == '2')
-                    let pending = tests.find(item => item.confirm == '0')
+                    let reject = tests[tests.length - 1]?.confirm == 2
+                    let pending = tests[tests.length - 1]?.confirm == 0
                     text += `📦 <b>Mahsulot joyi:</b> ➡️${get(oneQuestion, 'category.name.textUzLat')} > ${get(oneQuestion, 'name.textUzLat')}\n`;
                     if (success) {
                         text += `📊 <b>Holati:</b> ✅ Muvaffaqiyatli topshirilgan\n\n`;
@@ -411,7 +461,7 @@ let adminTestManagement = {
                     } else if (pending) {
                         text += `📊 <b>Holati:</b> 🕒 Tekshirilmoqda\n\n`;
                     } else {
-                        text += `📊 <b>Holati:</b> 🔒 Ishlanmagan\n\n`;
+                        text += `📊 <b>Holati:</b> 🔒 Topshirilmagan\n\n`;
                     }
                 }
                 if (get(user, 'custom.productMessageId')) {
@@ -830,9 +880,49 @@ let adminTestManagement = {
             let user = await infoUser({ chat_id })
             return get(user, 'job_title') == 'Admin' && get(user, 'confirmed') && get(user, 'user_step') == 20
         },
-    }
+    },
+
+    confirmTestResult: {
+        selfExecuteFn: async ({ chat_id, data, msg }) => {
+            let admin = await infoUser({ chat_id })
+            let testResult = await TestResult.findOne({ full: true, confirm: 0, test_id: data[2] });
+
+            if (!testResult) {
+                bot.sendMessage(chat_id, 'Mavjud emas')
+                return
+            }
+            let user = await User.findOne({ confirmed: true, master: admin.emp_id, chat_id: testResult.chat_id });
+
+            testResult.confirm = +data[1];
+            await testResult.save();
+
+            let finalTex = generateTestResultTextConfirm(
+                {
+                    question: testResult,
+                    totalQuestions: testResult.answers.length,
+                    answers: testResult.answers,
+                    startDate: testResult.startDate,
+                    endDate: testResult.endDate,
+                    user,
+                    status: data[1]
+                },
+            )
+            bot.editMessageText(finalTex, {
+                chat_id: chat_id,
+                message_id: get(msg, 'message.message_id'),
+                parse_mode: 'HTML',
+            })
+
+            bot.sendMessage(user.chat_id, finalTex, { parse_mode: 'HTML' })
+        },
+        middleware: async ({ chat_id }) => {
+            let user = await infoUser({ chat_id })
+            return get(user, 'job_title') == 'Master' && get(user, 'confirmed')
+        },
+    },
 
 }
+
 
 let updateTestCallBack = {
     updateTest: {
@@ -988,7 +1078,7 @@ let userCallback = {
         selfExecuteFn: async ({ chat_id, data, msg }) => {
             let user = await infoUser({ chat_id })
             let product = await ChildProduct.find({ 'parentProduct.id': data[1] })
-            let testResult = await TestResult.find({ productId: data[1], full: true, chat_id })
+            let testResult = await TestResult.find({ productId: data[1], chat_id, full: true })
             let questions = await Question.find({ isDeleted: false, productId: data[1] })
 
             if (product.length == 0) {
@@ -1058,7 +1148,7 @@ let userCallback = {
             if (questions.length) {
                 // confirm 0 tasdiqlanmagan , 1 tasdiqlangan 2 reject bo'lgan 
                 let textObj = {
-                    '0': "⏳ Test tasdiqlanmagan",
+                    '0': "⏳ Tasdiqlanishi kutilyapti",
                     '1': "✅ Test tasdiqlangan",
                     '2': "🔄 Testni qayta topshirish"
                 }
@@ -1238,7 +1328,7 @@ let userCallback = {
             if (questions.length) {
                 // confirm 0 tasdiqlanmagan , 1 tasdiqlangan 2 reject bo'lgan 
                 let textObj = {
-                    '0': "⏳ Test tasdiqlanmagan",
+                    '0': "⏳ Tasdiqlanishi kutilyapti",
                     '1': "✅ Test tasdiqlangan",
                     '2': "🔄 Testni qayta topshirish"
                 }
@@ -1473,8 +1563,9 @@ let userStartTestCallback = {
 
                     let testResultNow = await TestResult.find({ productId: get(user, 'custom.selectedProduct.id'), full: true, chat_id })
                     let success = testResultNow.find(item => item.confirm == 1)
+                    let testResult;
                     if (!success) {
-                        let testResult = new TestResult({
+                        testResult = new TestResult({
                             chat_id,
                             productId: totalQuestions[0].productId,
                             name: {
@@ -1500,7 +1591,21 @@ let userStartTestCallback = {
                     })
 
                     if (!success && full) {
-                        await sendMessageHelper(chat_id, `Masterga jo'natildi`, await mainMenuByRoles({ chat_id }))
+                        let master = await User.findOne({ emp_id: get(user, 'master') })
+                        await sendMessageHelper(chat_id, `Masterga jo'natildi ✅`, await mainMenuByRoles({ chat_id }))
+                        let finalTex = generateTestResultTextConfirm(
+                            {
+                                question: testResult,
+                                totalQuestions: testResult.answers.length,
+                                answers: testResult.answers,
+                                startDate: testResult.startDate,
+                                endDate: testResult.endDate,
+                                user,
+                            },
+                        )
+                        let btn = await dataConfirmBtnEmp(chat_id, [{ name: '✅ Ha', id: `1#${testResult.test_id}` }, { name: '❌ Bekor qilish', id: `2#${testResult.test_id}` }], 2, 'confirmTestResult')
+                        await sendMessageHelper(master.chat_id, finalTex, { ...btn, parse_mode: 'HTML' })
+
                     }
 
                     await postThenFn({ user, chat_id })

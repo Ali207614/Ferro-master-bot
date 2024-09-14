@@ -8,7 +8,7 @@ const { newUserInfo } = require("../keyboards/text");
 const User = require("../models/User");
 const { adminCallBack, adminTestManagement, updateTestCallBack, userCallback, userStartTestCallback } = require("../modules/callback_query");
 const { adminText, adminTestManagementStep, handleAnswerManagement } = require("../modules/step");
-const { adminBtn, executeBtn, adminTestManagementBtn, userBtn } = require("../modules/text");
+const { adminBtn, executeBtn, adminTestManagementBtn, userBtn, masterBtn } = require("../modules/text");
 const b1Controller = require('./b1Controller')
 
 class botConroller {
@@ -24,7 +24,8 @@ class botConroller {
                 ...adminBtn,
                 ...executeBtn,
                 ...adminTestManagementBtn,
-                ...userBtn
+                ...userBtn,
+                ...masterBtn
             }
             let stepTree = {
                 ...adminText,
@@ -64,10 +65,16 @@ class botConroller {
                     adminBtn,
                     executeBtn,
                     adminTestManagementBtn,
-                    userBtn
+                    userBtn,
+                    masterBtn
                 ]
-                let execute = btnTreeList.find(item => item[msg.text] && item[msg.text]?.middleware({ chat_id, msgText: msg.text }))
-
+                let execute;
+                for (let item of btnTreeList) {
+                    if (await item[msg.text]?.middleware({ chat_id, msgText: msg.text })) {
+                        execute = item;
+                        break; // Topilgan birinchi elementdan keyin chiqish
+                    }
+                }
                 execute = execute ? execute[msg.text] : {}
                 if (await get(execute, 'middleware', () => { })({ chat_id, msgText: msg.text })) {
                     await execute?.selfExecuteFn ? await execute.selfExecuteFn({ chat_id }) : undefined
@@ -163,7 +170,6 @@ class botConroller {
             let phone = get(msg, "contact.phone_number", "").replace(/\D/g, "");
             let deleteMessage = await sendMessageHelper(chat_id, 'Loading...')
             let sap_user = await b1Controller.getBusinessPartnerByPhone(phone);
-            console.log(sap_user)
 
             if (sap_user.length == 1) {
                 if (!rolesList.includes(sap_user[0].jobTitle)) {
