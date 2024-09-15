@@ -15,8 +15,9 @@ let adminText = {
             if (get(master, 'job_title') == 'Master') {
                 users = await User.find({
                     confirmed: true,
-                    // chat_id: { $ne: chat_id },
+                    chat_id: { $ne: chat_id },
                     master: master.emp_id,
+                    job_title: 'User',
                     $or: [
                         { first_name: { $regex: msgText, $options: 'i' } },
                         { last_name: { $regex: msgText, $options: 'i' } },

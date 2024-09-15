@@ -345,7 +345,21 @@ let userBtn = {
             if (testResult.length == 0) {
                 return await sendMessageHelper(chat_id, 'Mavjud emas')
             }
-            let users = await User.find({ confirmed: true, chat_id: { $in: [...new Set(testResult.map(item => item.chat_id))] } })
+            console.log(testResult.map(item => item.chat_id))
+            let chatIdCount = testResult.reduce((acc, item) => {
+                acc[item.chat_id] = (acc[item.chat_id] || 0) + 1;
+                return acc;
+            }, {});
+
+            // Massivni chat_id ning uchrash chastotasiga qarab kamayish tartibida saralash
+            let sorted = testResult.sort((a, b) => chatIdCount[b.chat_id] - chatIdCount[a.chat_id]);
+
+
+            // Takrorlanmas chat_id larni olish
+            let uniqueChatIds = [...new Set(sorted.map(item => item.chat_id))];
+
+            let users = await User.find({ confirmed: true, chat_id: { $in: uniqueChatIds } })
+            users = users.sort((a, b) => uniqueChatIds.indexOf(a.chat_id) - uniqueChatIds.indexOf(b.chat_id));
 
 
             let text = `🌐 Umumiy Natijalar\n\n`
@@ -405,7 +419,7 @@ let masterBtn = {
     "👥 Foydalanuvchilar": {
         selfExecuteFn: async ({ chat_id }) => {
             let admin = await infoUser({ chat_id })
-            let users = await User.find({ confirmed: true, master: admin.emp_id })
+            let users = await User.find({ confirmed: true, master: admin.emp_id, job_title: 'User' })
             updateStep(chat_id, 1)
             if (users.length) {
                 let mappedUser = users.map(item => {

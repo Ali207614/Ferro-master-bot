@@ -160,6 +160,7 @@ class botConroller {
     async contact(msg, chat_id) {
         try {
             let user = await infoUser({ chat_id });
+            console.log(chat_id)
             if (user) {
                 let isConfirm = get(user, 'confirmed')
                 let text = isConfirm ? `Assalomu Aleykum` : `Tasdiqlash uchun Adminga jo'natilgan`
@@ -199,7 +200,7 @@ class botConroller {
                     last_name: sap_user[0].lastName,
                     back: [],
                     lastMessageId: '',
-                    master: sap_user[0].U_Master
+                    master: sap_user[0]?.U_Master
                 });
                 await newUser.save();
 

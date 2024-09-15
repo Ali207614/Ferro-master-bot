@@ -35,7 +35,7 @@ let adminCallBack = {
                             parse_mode: 'MarkdownV2'
                         })
                     }
-                    let btn = data[1] == 1 ? await mainMenuByRoles({ chat_id }) : option
+                    let btn = data[1] == 1 ? await mainMenuByRoles({ chat_id: newUser.chat_id }) : option
                     let text = updateUserInfo(newUser, data[1] == 1, admin)
                     bot.sendMessage(data[2], text, btn)
                 }
@@ -82,7 +82,7 @@ let adminCallBack = {
                         ...btn
                     })
 
-                    bot.sendMessage(data[2], updateUserInfo(newUser, data[1] == 1, admin), await mainMenuByRoles({ chat_id }))
+                    bot.sendMessage(data[2], updateUserInfo(newUser, data[1] == 1, admin), await mainMenuByRoles({ chat_id: data[2] }))
                 }
                 else {
                     sendMessageHelper(chat_id, `Already Confirmed ✅`)
@@ -223,6 +223,10 @@ let adminCallBack = {
             let master = await User.findOne({ chat_id })
             if (master.job_title == 'Master') {
                 let testResult = await TestResult.find({ chat_id: data[1] })
+                if (testResult.length == 0) {
+                    await sendMessageHelper(chat_id, 'Mavjud emas')
+                    return
+                }
                 let filePath = await generateTestResultExcel(testResult, newUser)
 
                 await bot.sendDocument(chat_id, filePath, {
@@ -256,7 +260,10 @@ let adminCallBack = {
             if (master.job_title == 'Master') {
                 let testResult = await TestResult.find({ chat_id: data[1] })
                 let filePath = await generateTestResultExcel(testResult, newUser)
-
+                if (testResult.length == 0) {
+                    await sendMessageHelper(chat_id, 'Mavjud emas')
+                    return
+                }
                 await bot.sendDocument(chat_id, filePath, {
                     caption: empDynamicBtn(),
                     filename: 'Malumotlar.xlsx',
@@ -310,7 +317,7 @@ let adminCallBack = {
             let user = await infoUser({ chat_id })
             let users;
             if (get(user, 'job_title') == 'Master') {
-                users = await User.find({ confirmed: true, master: user.emp_id })
+                users = await User.find({ confirmed: true, master: user.emp_id, job_title: "User" })
             }
             else {
                 users = await User.find({ confirmed: true, chat_id: { $ne: chat_id } })
@@ -345,6 +352,7 @@ let adminCallBack = {
                     confirmed: true,
                     chat_id: { $ne: chat_id },
                     master: user.emp_id,
+                    job_title: "User",
                     $or: [
                         { first_name: { $regex: get(user, 'custom.search'), $options: 'i' } },
                         { last_name: { $regex: get(user, 'custom.search'), $options: 'i' } },
