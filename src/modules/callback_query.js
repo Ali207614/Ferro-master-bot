@@ -19,8 +19,11 @@ require('dotenv').config();
 let adminCallBack = {
     "confirmNewUser": {
         selfExecuteFn: async ({ chat_id, data }) => {
-            let newUser = await User.findOne({ chat_id: data[2] })
             let admin = await User.findOne({ chat_id })
+            if (!(get(admin, 'job_title') == 'Admin')) {
+                return
+            }
+            let newUser = await User.findOne({ chat_id: data[2] })
             if (newUser) {
                 if (get(newUser, 'confirmed') === false) {
                     data[1] == 1 ?
@@ -48,8 +51,7 @@ let adminCallBack = {
             return
         },
         middleware: async ({ chat_id, id }) => {
-            let user = await infoUser({ chat_id })
-            return get(user, 'job_title') == 'Admin'
+            return true
         },
     },
     "confirmLoginList": {

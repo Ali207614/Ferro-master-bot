@@ -5,8 +5,8 @@ require('dotenv').config();
 
 let token = process.env.token
 const conn_params = {
-    // serverNode: process.env.server_node,
-    serverNode: process.env.server_node_local,
+    serverNode: process.env.server_node,
+    // serverNode: process.env.server_node_local,
     uid: process.env.uid,
     pwd: process.env.password,
 };
@@ -20,8 +20,8 @@ let bot = new TelegramAPi(token, {
 
 const connectDB = async () => {
     try {
-        await mongoose.connect(process.env.mongo_url_local);
-        // await mongoose.connect(process.env.mongo_url);
+        // await mongoose.connect(process.env.mongo_url_local);
+        await mongoose.connect(process.env.mongo_url);
         console.log('MongoDBga ulanish muvaffaqiyatli amalga oshirildi');
     } catch (err) {
         console.error('MongoDBga ulanishda xatolik yuz berdi:', err);

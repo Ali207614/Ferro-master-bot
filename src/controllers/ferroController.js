@@ -1,7 +1,6 @@
 const axios = require('axios');
 require('dotenv').config();
 class ferroController {
-
     ferroApi
     constructor() {
         this.ferroApi = process.env.ferro_api
