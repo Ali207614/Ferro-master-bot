@@ -160,7 +160,6 @@ class botConroller {
     async contact(msg, chat_id) {
         try {
             let user = await infoUser({ chat_id });
-            console.log(chat_id)
             if (user) {
                 let isConfirm = get(user, 'confirmed')
                 let text = isConfirm ? `Assalomu Aleykum` : `Tasdiqlash uchun Adminga jo'natilgan`

@@ -4,6 +4,10 @@ const hanaClient = require("@sap/hana-client");
 require('dotenv').config();
 let tls = require('tls');
 const { sendMessageHelper } = require("./helpers");
+const cron = require('node-cron');
+const Catalog = require("./models/Catalog");
+const ChildProduct = require("./models/ChildProduct");
+const Product = require("./models/Product");
 
 const start = async () => {
     try {
@@ -65,3 +69,15 @@ const start = async () => {
 };
 
 start();
+
+
+cron.schedule('0 0 * * *', async () => {
+    try {
+        await Catalog.deleteMany({})
+        await ChildProduct.deleteMany({})
+        await Product.deleteMany({})
+        console.log('ochirildi')
+    } catch (error) {
+        console.error('Elementlarni o\'chirishda xatolik:', error);
+    }
+});

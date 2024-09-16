@@ -107,6 +107,7 @@ let adminCallBack = {
                     return
                 }
                 await deleteUser({ chat_id: data[2] })
+                let TestResult = await TestResult.deleteMany({ chat_id: data[2] })
                 bot.editMessageText(userDeleteInfo(newUser, admin), {
                     chat_id: chat_id,
                     message_id: get(msg, 'message.message_id'),
@@ -1599,21 +1600,22 @@ let userStartTestCallback = {
                     })
 
                     if (!success && full) {
-                        let master = await User.findOne({ emp_id: get(user, 'master') })
-                        await sendMessageHelper(chat_id, `Masterga jo'natildi ✅`, await mainMenuByRoles({ chat_id }))
-                        let finalTex = generateTestResultTextConfirm(
-                            {
-                                question: testResult,
-                                totalQuestions: testResult.answers.length,
-                                answers: testResult.answers,
-                                startDate: testResult.startDate,
-                                endDate: testResult.endDate,
-                                user,
-                            },
-                        )
-                        let btn = await dataConfirmBtnEmp(chat_id, [{ name: '✅ Ha', id: `1#${testResult.test_id}` }, { name: '❌ Bekor qilish', id: `2#${testResult.test_id}` }], 2, 'confirmTestResult')
-                        await sendMessageHelper(master.chat_id, finalTex, { ...btn, parse_mode: 'HTML' })
-
+                        let master = await User.findOne({ emp_id: get(user, 'master'), job_title: "Master" })
+                        if (master) {
+                            await sendMessageHelper(chat_id, `Masterga jo'natildi ✅`, await mainMenuByRoles({ chat_id }))
+                            let finalTex = generateTestResultTextConfirm(
+                                {
+                                    question: testResult,
+                                    totalQuestions: testResult.answers.length,
+                                    answers: testResult.answers,
+                                    startDate: testResult.startDate,
+                                    endDate: testResult.endDate,
+                                    user,
+                                },
+                            )
+                            let btn = await dataConfirmBtnEmp(chat_id, [{ name: '✅ Ha', id: `1#${testResult.test_id}` }, { name: '❌ Bekor qilish', id: `2#${testResult.test_id}` }], 2, 'confirmTestResult')
+                            await sendMessageHelper(master.chat_id, finalTex, { ...btn, parse_mode: 'HTML' })
+                        }
                     }
 
                     await postThenFn({ user, chat_id })

@@ -345,7 +345,6 @@ let userBtn = {
             if (testResult.length == 0) {
                 return await sendMessageHelper(chat_id, 'Mavjud emas')
             }
-            console.log(testResult.map(item => item.chat_id))
             let chatIdCount = testResult.reduce((acc, item) => {
                 acc[item.chat_id] = (acc[item.chat_id] || 0) + 1;
                 return acc;
