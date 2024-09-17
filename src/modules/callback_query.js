@@ -31,6 +31,7 @@ let adminCallBack = {
                         await deleteUser({ chat_id: data[2] })
                     for (let i = 0; i < get(newUser, 'custom.listAdmin', []).length; i++) {
                         let adminChatId = get(newUser, 'custom.listAdmin', [])[i].chat_id
+                        console.log(adminChatId)
                         let adminMessageId = get(newUser, 'custom.listAdmin', [])[i].id
                         bot.editMessageText(updateUserInfo(newUser, data[1] == 1, admin), {
                             chat_id: adminChatId,
@@ -542,7 +543,7 @@ let adminTestManagement = {
                 'User': 'productUser',
                 'Admin': 'productAdmin'
             }
-            let btn = await dataConfirmBtnEmp(chat_id, productBtn, 2, obj[get(user, 'job_title')])
+            let btn = await dataConfirmBtnEmp(chat_id, productBtn, 2, obj[get(user, 'job_title')], pagination)
             if (uncategorizedProduct.includes(Number(get(product, '[0].category.id', '0')))) {
                 btn.reply_markup.inline_keyboard = [...btn.reply_markup.inline_keyboard.filter(item => item[0].callback_data != 'backToCategory'), [{
                     text: `🔙 Katalogga qaytish`,
@@ -1375,40 +1376,23 @@ let userCallback = {
             let text = generateProductText(childProduct)
             let updateId;
             if (get(user, 'custom.productMessageId')) {
-                if (get(childProduct, 'parentProduct.photos[0].photo.url', '')) {
-                    await bot.editMessageCaption(text, {
-                        chat_id: chat_id,
-                        message_id: get(user, 'custom.productMessageId'),
-                        parse_mode: 'MarkdownV2',
-                    });
-                } else {
-                    await bot.editMessageText(text, {
-                        chat_id: chat_id,
-                        message_id: get(user, 'custom.productMessageId'),
-                        parse_mode: 'MarkdownV2'
-                    })
-                }
+                bot.deleteMessage(chat_id, get(user, 'custom.productMessageId'))
             }
-            else {
-                if (get(childProduct, 'parentProduct.photos[0].photo.url', '')) {
-                    updateId = await bot.sendPhoto(chat_id, photoUrl, {
-                        caption: text,
-                        parse_mode: 'MarkdownV2',
-                    });
-                } else {
-                    updateId = await sendMessageHelper(chat_id, text, { parse_mode: 'MarkdownV2' });
-                }
-                updateCustom(chat_id, { productMessageId: updateId.message_id });
+            if (get(childProduct, 'parentProduct.photos[0].photo.url', '')) {
+                updateId = await bot.sendPhoto(chat_id, photoUrl, {
+                    caption: text,
+                    parse_mode: 'MarkdownV2',
+                });
+            } else {
+                updateId = await sendMessageHelper(chat_id, text, { parse_mode: 'MarkdownV2' });
             }
+            updateCustom(chat_id, { productMessageId: updateId.message_id });
             bot.deleteMessage(chat_id, deleteMessage.message_id)
-
-
-
             return
         },
         middleware: async ({ chat_id, id }) => {
             let user = await infoUser({ chat_id })
-            return get(user, 'job_title') == 'User'
+            return get(user, 'job_title') == 'User' && !get(user, 'custom.test.productId')
         },
     },
 }
@@ -1416,51 +1400,53 @@ let userCallback = {
 let userStartTestCallback = {
     startTestConfirm: {
         selfExecuteFn: async ({ chat_id, data, msg }) => {
-            let user = await infoUser({ chat_id });
-            let questions = await Question.find({ isDeleted: false, productId: get(user, 'custom.selectedProduct.id') })
-            let testResult = await TestResult.find({ productId: get(user, 'custom.selectedProduct.id'), full: true, chat_id })
-            let success = testResult.find(item => item.confirm == 1)
-            let pending = testResult[testResult.length - 1]?.confirm == '0'
-            if (!success && pending) {
-                if (get(user, 'custom.productMessageId')) {
-                    bot.editMessageText(`⏳ Tasdiqlanish kutilyapti`, {
-                        chat_id: chat_id,
-                        message_id: get(user, 'custom.productMessageId'),
-                        parse_mode: 'HTML',
-                    })
-                }
-                else {
-                    let message = await sendMessageHelper(chat_id, `⏳ Tasdiqlanish kutilyapti`, { parse_mode: "HTML" })
-                    updateCustom(chat_id, { productMessageId: message.message_id })
-                }
+            try {
+                let user = await infoUser({ chat_id });
+                let questions = await Question.find({ isDeleted: false, productId: get(user, 'custom.selectedProduct.id') })
+                let testResult = await TestResult.find({ productId: get(user, 'custom.selectedProduct.id'), full: true, chat_id })
+                let success = testResult.find(item => item.confirm == 1)
+                let pending = testResult[testResult.length - 1]?.confirm == '0'
+                if (!success && pending) {
+                    if (get(user, 'custom.productMessageId')) {
+                        bot.editMessageText(`⏳ Tasdiqlanish kutilyapti`, {
+                            chat_id: chat_id,
+                            message_id: get(user, 'custom.productMessageId'),
+                            parse_mode: 'HTML',
+                        })
+                    }
+                    else {
+                        let message = await sendMessageHelper(chat_id, `⏳ Tasdiqlanish kutilyapti`, { parse_mode: "HTML" })
+                        updateCustom(chat_id, { productMessageId: message.message_id })
+                    }
 
-                return
+                    return
+                }
+                if (questions.length) {
+
+                    let btn = await dataConfirmBtnEmp(chat_id,
+                        [
+                            { name: '🚀 Boshlash', id: `start#${get(user, 'custom.selectedProduct.id')}` },
+                            { name: '❌ Bekor qilish', id: `cancel#${get(user, 'custom.selectedProduct.id')}` }
+                        ], 2, 'startTest')
+                    let master = await User.findOne({ emp_id: get(user, 'master') })
+                    let text = generateTestText(questions, master)
+                    if (get(user, 'custom.productMessageId')) {
+                        await bot.deleteMessage(chat_id, user.custom?.productMessageId);
+                        let message = await sendMessageHelper(chat_id, text, { ...btn, parse_mode: "HTML" })
+                        updateCustom(chat_id, { productMessageId: message.message_id })
+                    }
+                    else {
+                        let message = await sendMessageHelper(chat_id, text, { ...btn, parse_mode: "HTML" })
+                        updateCustom(chat_id, { productMessageId: message.message_id })
+                    }
+
+                    return
+                }
+                return sendMessageHelper(chat_id, 'Mavjud emas')
             }
-            if (questions.length) {
-                let btn = await dataConfirmBtnEmp(chat_id,
-                    [
-                        { name: '🚀 Boshlash', id: `start#${get(user, 'custom.selectedProduct.id')}` },
-                        { name: '❌ Bekor qilish', id: `cancel#${get(user, 'custom.selectedProduct.id')}` }
-                    ], 2, 'startTest')
-                let master = await User.findOne({ emp_id: get(user, 'master') })
-                let text = generateTestText(questions, master)
-
-                if (get(user, 'custom.productMessageId')) {
-                    bot.editMessageText(text, {
-                        chat_id: chat_id,
-                        message_id: get(user, 'custom.productMessageId'),
-                        parse_mode: 'HTML',
-                        ...btn
-                    })
-                }
-                else {
-                    let message = await sendMessageHelper(chat_id, text, { ...btn, parse_mode: "HTML" })
-                    updateCustom(chat_id, { productMessageId: message.message_id })
-                }
-
-                return
+            catch (e) {
+                console.log(e, ' bu err')
             }
-            return sendMessageHelper(chat_id, 'Mavjud emas')
         },
         middleware: async ({ chat_id, id }) => {
             let user = await infoUser({ chat_id })

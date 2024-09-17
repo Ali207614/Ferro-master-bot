@@ -20,8 +20,8 @@ let bot = new TelegramAPi(token, {
 
 const connectDB = async () => {
     try {
-        // await mongoose.connect(process.env.mongo_url_local);
-        await mongoose.connect(process.env.mongo_url);
+        await mongoose.connect(process.env.mongo_url_local);
+        // await mongoose.connect(process.env.mongo_url);
         console.log('MongoDBga ulanish muvaffaqiyatli amalga oshirildi');
     } catch (err) {
         console.error('MongoDBga ulanishda xatolik yuz berdi:', err);

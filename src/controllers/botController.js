@@ -178,7 +178,8 @@ class botConroller {
                     return
                 }
                 if (sap_user[0].jobTitle == 'User') {
-                    let master = await User.findOne({ emp_id: sap_user[0].empID, job_title: "Master" })
+                    console.log(sap_user)
+                    let master = await User.findOne({ emp_id: sap_user[0].U_Master, job_title: "Master" })
                     if (!master) {
                         sendMessageHelper(
                             chat_id,
