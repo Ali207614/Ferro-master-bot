@@ -5,8 +5,8 @@ require('dotenv').config();
 
 let token = process.env.token
 const conn_params = {
-    serverNode: process.env.server_node,
-    // serverNode: process.env.server_node_local,
+    // serverNode: process.env.server_node,
+    serverNode: process.env.server_node_local,
     uid: process.env.uid,
     pwd: process.env.password,
 };
