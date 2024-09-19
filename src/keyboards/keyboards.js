@@ -73,7 +73,7 @@ const userBtn = {
         keyboard: [
             [
                 {
-                    text: "📦 Mahsulotlar bo'yicha ma'lumot",
+                    text: "📑 Mahsulotlar bo'yicha ma'lumot",
                 },
                 {
                     text: "📊 Mening natijalarim",
