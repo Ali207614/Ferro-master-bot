@@ -110,7 +110,7 @@ let adminCallBack = {
                     return
                 }
                 await deleteUser({ chat_id: data[2] })
-                let TestResult = await TestResult.deleteMany({ chat_id: data[2] })
+                await TestResult.deleteMany({ chat_id: data[2] })
                 bot.editMessageText(userDeleteInfo(newUser, admin), {
                     chat_id: chat_id,
                     message_id: get(msg, 'message.message_id'),
