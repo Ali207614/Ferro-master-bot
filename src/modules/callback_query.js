@@ -1102,7 +1102,7 @@ let userCallback = {
                 product = newProduct
             }
             if (product?.length == 0) {
-                sendMessagaHelper(chat_id, "Mavjud emas")
+                await sendMessageHelper(chat_id, "Mavjud emas")
                 return
             }
 
@@ -1197,26 +1197,45 @@ let userCallback = {
             let user = await infoUser({ chat_id })
             let categories = get(user, 'custom.categories', [])
             let product = get(user, 'custom.product', [])
-            let text = `*🛠️ Mahsulotni tanlang*\n\n` +
-                `*🔍 Mahsulot joyi*: \`${get(categories, 'name.textUzLat', '')} > ${get(product, '[0].category.name.textUzLat')}\`\n\n` +
-                `Iltimos, quyidagi mahsulotlardan birini tanlang:`
+            let text = ''
+            if (get(user, 'custom.searchResult', []).length) {
+                text = `*🛠️ Iltimos, quyidagi mahsulotlardan birini tanlang*\n\n`
+            }
+            else {
+                text = `*🛠️ Mahsulotni tanlang*\n\n` +
+                    `*🔍 Mahsulot joyi*: \`${get(categories, 'name.textUzLat', '')} > ${get(product, '[0].category.name.textUzLat')}\`\n\n` +
+                    `Iltimos, quyidagi mahsulotlardan birini tanlang:`
+            }
+
 
             let pagination = data[1] == 'prev' ? { prev: +data[2] - 10, next: data[2] } : { prev: data[2], next: +data[2] + 10 }
 
+            let productBtn = []
+            if (get(user, 'custom.searchResult', []).length == 0) {
+                productBtn = product.filter(item => !item.isDisabled).map(item => {
+                    return { name: get(item, 'name.textUzLat', '-'), id: get(item, 'id') }
+                })
+            }
+            else {
+                productBtn = get(user, 'custom.searchResult', []).map(item => {
+                    return { name: get(item, 'name', '-'), id: get(item, 'id') }
+                })
+            }
 
-            let productBtn = product.filter(item => !item.isDisabled).map(item => {
-                return { name: get(item, 'name.textUzLat', '-'), id: get(item, 'id') }
-            })
             let obj = {
                 'User': 'productUser',
                 'Admin': 'productAdmin'
             }
             let btn = await dataConfirmBtnEmp(chat_id, productBtn, 2, obj[get(user, 'job_title')], pagination)
             if (uncategorizedProduct.includes(Number(get(product, '[0].category.id', '0')))) {
+
                 btn.reply_markup.inline_keyboard = [...btn.reply_markup.inline_keyboard.filter(item => item[0].callback_data != 'backToCategory'), [{
                     text: `🔙 Katalogga qaytish`,
                     callback_data: 'backToCatalog'
                 }]]
+            }
+            if (get(user, 'custom.searchResult', []).length) {
+                btn.reply_markup.inline_keyboard = [...btn.reply_markup.inline_keyboard.filter(item => item[0].callback_data != 'backToCategory')]
             }
             bot.editMessageText(text, {
                 chat_id: chat_id,
@@ -1236,24 +1255,41 @@ let userCallback = {
             let user = await infoUser({ chat_id })
             let categories = get(user, 'custom.categories', [])
             let product = get(user, 'custom.product', [])
-            let text = `*🛠️ Mahsulotni tanlang*\n\n` +
-                `*🔍 Mahsulot joyi*: \`${get(categories, 'name.textUzLat', '')} > ${get(product, '[0].category.name.textUzLat')}\`\n\n` +
-                `Iltimos, quyidagi mahsulotlardan birini tanlang:`
+            let text = ''
+            if (get(user, 'custom.searchResult', []).length) {
+                text = `*🛠️ Iltimos, quyidagi mahsulotlardan birini tanlang*\n\n`
+            }
+            else {
+                text = `*🛠️ Mahsulotni tanlang*\n\n` +
+                    `*🔍 Mahsulot joyi*: \`${get(categories, 'name.textUzLat', '')} > ${get(product, '[0].category.name.textUzLat')}\`\n\n` +
+                    `Iltimos, quyidagi mahsulotlardan birini tanlang:`
+            }
 
 
-            let productBtn = product.filter(item => !item.isDisabled).map(item => {
-                return { name: get(item, 'name.textUzLat', '-'), id: get(item, 'id') }
-            })
+
+            let productBtn = []
+            if (get(user, 'custom.searchResult', []).length == 0) {
+                productBtn = product.filter(item => !item.isDisabled).map(item => {
+                    return { name: get(item, 'name.textUzLat', '-'), id: get(item, 'id') }
+                })
+            }
+            else {
+                productBtn = get(user, 'custom.searchResult', []).map(item => {
+                    return { name: get(item, 'name', '-'), id: get(item, 'id') }
+                })
+            }
 
             let btn = await dataConfirmBtnEmp(chat_id, productBtn, 2, 'productUser')
 
-            if (uncategorizedProduct.includes(Number(get(product, '[0].category.id', '0')))) {
+            if (uncategorizedProduct.includes(Number(get(product, '[0].category.id', '0'))) && get(user, 'custom.searchResult', []).length == 0) {
                 btn.reply_markup.inline_keyboard = [...btn.reply_markup.inline_keyboard.filter(item => item[0].callback_data != 'backToCategory'), [{
                     text: `🔙 Katalogga qaytish`,
                     callback_data: 'backToCatalog'
                 }]]
             }
-
+            if (get(user, 'custom.searchResult', []).length) {
+                btn.reply_markup.inline_keyboard = [...btn.reply_markup.inline_keyboard.filter(item => item[0].callback_data != 'backToCategory')]
+            }
             try {
                 if (get(user, 'custom.productMessageId')) {
                     await bot.deleteMessage(chat_id, user.custom?.productMessageId);

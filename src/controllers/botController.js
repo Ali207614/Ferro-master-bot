@@ -48,7 +48,8 @@ class botConroller {
                             selectedProduct: {},
                             updateId: '',
                             test: {},
-                            answers: []
+                            answers: [],
+                            searchResult: []
                         }
                     })
                 }

@@ -37,7 +37,7 @@ let executeBtn = {
                 let btnBack = get(user, `back[${user.back.length - 1}].btn`, await mainMenuByRoles({ chat_id }))
                 updateUser(chat_id, {
                     back: get(user, 'back', []).filter((item, i) => i != user.back?.length - 1),
-                    custom: { ...get(user, 'custom', {}), productMessageId: '' }
+                    custom: { ...get(user, 'custom', {}), productMessageId: '', searchResult: [] }
                 })
                 return await btnBack
             },
@@ -423,6 +423,28 @@ let userBtn = {
         middleware: async ({ chat_id }) => {
             let user = await infoUser({ chat_id })
             return get(user, 'job_title') == 'User' && get(user, 'confirmed')
+        },
+    },
+    "🔍 Mahsulotlarni izlash": {
+        selfExecuteFn: async ({ chat_id }) => {
+            updateBack(chat_id, {
+                text: `Asosiy menu`,
+                btn: await mainMenuByRoles({ chat_id }),
+                step: 1
+            })
+            updateStep(chat_id, 500)
+        },
+        middleware: async ({ chat_id }) => {
+            let user = await infoUser({ chat_id })
+            return get(user, 'job_title') == 'User' && get(user, 'confirmed')
+        },
+        next: {
+            text: ({ chat_id, data }) => {
+                return `Mahsulot nomini yozing.`
+            },
+            btn: async ({ chat_id, data }) => {
+                return empDynamicBtn()
+            },
         },
     },
 }

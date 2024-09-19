@@ -36,6 +36,15 @@ class ferroController {
             throw new Error('API request error:', error);
         }
     }
+
+    async ferroSearchApi(text) {
+        try {
+            const response = await axios.get(`${this.ferroApi}/search/compact/product?query=${text}&language=uz`);
+            return response?.data
+        } catch (error) {
+            throw new Error('API request error:', error);
+        }
+    }
 }
 
 module.exports = new ferroController();

@@ -1,5 +1,6 @@
 const { get } = require("lodash");
 const { bot, rolesList, emoji } = require("../config");
+const ferroController = require("../controllers/ferroController");
 const { infoUser, sendMessageHelper, updateUser, updateCustom, validatePositiveInteger, updateBack, updateQuestion, updateThenFn, sleepNow } = require("../helpers");
 const { empDynamicBtn } = require("../keyboards/function_keyboards");
 const { dataConfirmBtnEmp } = require("../keyboards/inline_keyboards");
@@ -57,6 +58,37 @@ let adminText = {
             return ['Admin', 'Master'].includes(get(user, 'job_title')) && get(user, 'confirmed') && get(user, 'user_step') == 10
         },
     },
+    "500": {
+        selfExecuteFn: async ({ chat_id, msgText }) => {
+            if (msgText.length <= 2) {
+                await sendMessageHelper(chat_id, `❗️ Xatolik!\n3 ta harfdan katta bo'lishi kerak`)
+                return
+            }
+            let deleteMessage = await sendMessageHelper(chat_id, 'Loading...')
+
+            let result = await ferroController.ferroSearchApi(msgText)
+            if (result.length == 0) {
+                await sendMessageHelper(chat_id, 'Mavjud emas')
+                bot.deleteMessage(chat_id, deleteMessage.message_id)
+                return
+            }
+            bot.deleteMessage(chat_id, deleteMessage.message_id)
+
+            let text = `*🛠️ Iltimos, quyidagi mahsulotlardan birini tanlang*\n\n`
+            let productBtn = result.map(item => {
+                return { name: get(item, 'name', '-'), id: get(item, 'id') }
+            })
+            let btn = await dataConfirmBtnEmp(chat_id, productBtn, 2, 'productUser')
+            btn.reply_markup.inline_keyboard = [...btn.reply_markup.inline_keyboard.filter(item => item[0].callback_data != 'backToCategory')]
+            let botId = await sendMessageHelper(chat_id, text, { ...btn, parse_mode: "MarkdownV2" })
+            updateCustom(chat_id, { searchResult: result })
+            return
+        },
+        middleware: async ({ chat_id }) => {
+            let user = await infoUser({ chat_id })
+            return ['User'].includes(get(user, 'job_title')) && get(user, 'confirmed') && get(user, 'user_step') == 500
+        },
+    }
 }
 
 let adminTestManagementStep = {
