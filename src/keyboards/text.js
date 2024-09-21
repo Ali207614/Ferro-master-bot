@@ -268,9 +268,6 @@ function generateTestResultText({ question, totalQuestions, answers = [], startD
 📅 <b>Test tugagan sanasi:</b> ${formattedDate}
 
 `;
-    // if (statusObj[status]) {
-    //     text += `🎓 <b>Baholovchi:</b> ${statusObj[status]}`
-    // }
     return text
 }
 

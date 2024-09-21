@@ -31,7 +31,6 @@ let adminCallBack = {
                         await deleteUser({ chat_id: data[2] })
                     for (let i = 0; i < get(newUser, 'custom.listAdmin', []).length; i++) {
                         let adminChatId = get(newUser, 'custom.listAdmin', [])[i].chat_id
-                        console.log(adminChatId)
                         let adminMessageId = get(newUser, 'custom.listAdmin', [])[i].id
                         bot.editMessageText(updateUserInfo(newUser, data[1] == 1, admin), {
                             chat_id: adminChatId,
@@ -64,6 +63,11 @@ let adminCallBack = {
                     data[1] == 1 ?
                         await updateUser(data[2], { confirmed: true, custom: { ...get(newUser, 'custom', {}), confirm_admin: chat_id } }) :
                         await deleteUser({ chat_id: data[2] })
+
+                    let master = await User.findOne({ emp_id: get(newUser, 'master') })
+                    if (master && data[1] == 1) {
+                        bot.sendMessage(get(master, 'chat_id'), updateUserInfo(newUser, data[1] == 1, admin))
+                    }
 
                     bot.editMessageText(updateUserInfo(newUser, data[1] == 1, admin), {
                         chat_id: chat_id,
@@ -422,7 +426,8 @@ let adminTestManagement = {
             return
         },
         middleware: async ({ chat_id, id }) => {
-            return true
+            let user = await infoUser({ chat_id })
+            return !get(user, 'custom.test.productId')
         },
     },
     categoriesAdmin: {
@@ -521,7 +526,8 @@ let adminTestManagement = {
             return
         },
         middleware: async ({ chat_id, id }) => {
-            return true
+            let user = await infoUser({ chat_id })
+            return !get(user, 'custom.test.productId')
         },
     },
     paginationProductAdmin: {
@@ -559,7 +565,8 @@ let adminTestManagement = {
             return
         },
         middleware: async ({ chat_id, id }) => {
-            return true
+            let user = await infoUser({ chat_id })
+            return !get(user, 'custom.test.productId')
         },
     },
     paginationCategoriesAdmin: {
@@ -586,7 +593,8 @@ let adminTestManagement = {
             return
         },
         middleware: async ({ chat_id, id }) => {
-            return true
+            let user = await infoUser({ chat_id })
+            return !get(user, 'custom.test.productId')
         },
     },
     backToCatalog: {
@@ -628,7 +636,8 @@ let adminTestManagement = {
             return
         },
         middleware: async ({ chat_id, id }) => {
-            return true
+            let user = await infoUser({ chat_id })
+            return !get(user, 'custom.test.productId')
         },
     },
     backToCategory: {
@@ -653,7 +662,8 @@ let adminTestManagement = {
             return
         },
         middleware: async ({ chat_id, id }) => {
-            return true
+            let user = await infoUser({ chat_id })
+            return !get(user, 'custom.test.productId')
         },
     },
     productAdmin: {
@@ -1090,7 +1100,7 @@ let userCallback = {
         selfExecuteFn: async ({ chat_id, data, msg }) => {
             let user = await infoUser({ chat_id })
             let product = await ChildProduct.find({ 'parentProduct.id': data[1] })
-            let testResult = await TestResult.find({ productId: data[1], chat_id, full: true })
+            let testResult = await TestResult.find({ productId: data[1], chat_id })
             let questions = await Question.find({ isDeleted: false, productId: data[1] })
 
             if (product.length == 0) {
@@ -1164,9 +1174,10 @@ let userCallback = {
                     '1': "✅ Test tasdiqlangan",
                     '2': "🔄 Testni qayta topshirish"
                 }
-                let confirmTest = testResult.find(item => item.confirm == 1)
+                let tests = testResult.filter(item => item.full)
+                let confirmTest = tests.find(item => item.confirm == 1)
                 btn.reply_markup.inline_keyboard = [...btn.reply_markup.inline_keyboard, [{
-                    text: testResult.length ? textObj[confirmTest ? 1 : testResult[testResult.length - 1].confirm] : `📝 Testni boshlash`,
+                    text: tests.length ? textObj[confirmTest ? 1 : tests[tests.length - 1].confirm] : `📝 Testni boshlash`,
                     callback_data: 'startTestConfirm'
                 }]]
             }
@@ -1189,7 +1200,7 @@ let userCallback = {
         },
         middleware: async ({ chat_id, id }) => {
             let user = await infoUser({ chat_id })
-            return get(user, 'job_title') == 'User'
+            return get(user, 'job_title') == 'User' && !get(user, 'custom.test.productId')
         },
     },
     paginationProductUser: {
@@ -1247,7 +1258,7 @@ let userCallback = {
         },
         middleware: async ({ chat_id, id }) => {
             let user = await infoUser({ chat_id })
-            return get(user, 'job_title') == 'User'
+            return get(user, 'job_title') == 'User' && !get(user, 'custom.test.productId')
         },
     },
     backToChildProduct: {
@@ -1309,13 +1320,13 @@ let userCallback = {
         },
         middleware: async ({ chat_id, id }) => {
             let user = await infoUser({ chat_id })
-            return get(user, 'job_title') == 'User'
+            return get(user, 'job_title') == 'User' && !get(user, 'custom.test.productId')
         },
     },
     paginationChildProduct: {
         selfExecuteFn: async ({ chat_id, data, msg }) => {
             let user = await infoUser({ chat_id })
-            let testResult = await TestResult.find({ productId: get(user, 'custom.selectedProduct.id'), full: true, chat_id })
+            let testResult = await TestResult.find({ productId: get(user, 'custom.selectedProduct.id'), chat_id })
             let questions = await Question.find({ isDeleted: false, productId: get(user, 'custom.selectedProduct.id') })
 
             let product = get(user, 'custom.childProduct')
@@ -1380,9 +1391,10 @@ let userCallback = {
                     '1': "✅ Test tasdiqlangan",
                     '2': "🔄 Testni qayta topshirish"
                 }
-                let confirmTest = testResult.find(item => item.confirm == 1)
+                let tests = testResult.filter(item => item.full)
+                let confirmTest = tests.find(item => item.confirm == 1)
                 btn.reply_markup.inline_keyboard = [...btn.reply_markup.inline_keyboard, [{
-                    text: testResult.length ? textObj[confirmTest ? 1 : testResult[testResult.length - 1].confirm] : `📝 Testni boshlash`,
+                    text: tests.length ? textObj[confirmTest ? 1 : tests[tests.length - 1].confirm] : `📝 Testni boshlash`,
                     callback_data: 'startTestConfirm'
                 }]]
             }
@@ -1399,7 +1411,7 @@ let userCallback = {
         },
         middleware: async ({ chat_id, id }) => {
             let user = await infoUser({ chat_id })
-            return get(user, 'job_title') == 'User'
+            return get(user, 'job_title') == 'User' && !get(user, 'custom.test.productId')
         },
     },
     childProduct: {
@@ -1486,7 +1498,7 @@ let userStartTestCallback = {
         },
         middleware: async ({ chat_id, id }) => {
             let user = await infoUser({ chat_id })
-            return get(user, 'job_title') == 'User'
+            return get(user, 'job_title') == 'User' && !get(user, 'custom.test.productId')
         },
     },
     startTest: {
@@ -1511,7 +1523,7 @@ let userStartTestCallback = {
 
                 let oneQuestion = questions[0]
                 let photoUrl = get(oneQuestion, 'photo[0].file_id')
-                let text = `1️⃣\\-*Savol* : ${escapeMarkdown(get(oneQuestion, 'answerText', '-'))}`
+                let text = `1\\-*Savol* : ${escapeMarkdown(get(oneQuestion, 'answerText', '-'))}`
                 let btnList = filterAndShuffleQuestions(get(oneQuestion, 'answers', []).map(item => {
                     return { name: item, id: `${oneQuestion.id}#${item == oneQuestion.correct}` }
                 }))
@@ -1546,7 +1558,7 @@ let userStartTestCallback = {
         },
         middleware: async ({ chat_id, id }) => {
             let user = await infoUser({ chat_id })
-            return get(user, 'job_title') == 'User'
+            return get(user, 'job_title') == 'User' && !get(user, 'custom.test.productId')
         },
     },
     test: {
@@ -1595,7 +1607,7 @@ let userStartTestCallback = {
                     let full = answers.filter(item => item.isCorrect).length == totalQuestions.length
 
                     let testResultNow = await TestResult.find({ productId: get(user, 'custom.selectedProduct.id'), full: true, chat_id })
-                    let success = testResultNow.find(item => item.confirm == 1)
+                    let success = testResultNow.find(item => item?.confirm == 1)
                     let testResult;
                     if (!success) {
                         testResult = new TestResult({
@@ -1646,7 +1658,7 @@ let userStartTestCallback = {
 
                     return
                 }
-                await helperTestCallback({ user, chat_id, questions })
+                await helperTestCallback({ user, chat_id, questions, count: Math.abs((totalQuestions.length - questions.length) + 1) })
                 return
             }
             return sendMessageHelper(chat_id, 'Mavjud emas')
@@ -1686,10 +1698,10 @@ let postThenFn = async ({ user, chat_id }) => {
     await sendMessageHelper(chat_id, text, { ...btn, parse_mode: 'MarkdownV2' })
 }
 
-let helperTestCallback = async ({ user, chat_id, questions }) => {
+let helperTestCallback = async ({ user, chat_id, questions, count }) => {
     let oneQuestion = questions[0]
     let photoUrl = get(oneQuestion, 'photo[0].file_id')
-    let text = `1️⃣\\-*Savol* : ${escapeMarkdown(get(oneQuestion, 'answerText', '-'))}`
+    let text = `${count}\\-*Savol* : ${escapeMarkdown(get(oneQuestion, 'answerText', '-'))}`
 
     let btnList = filterAndShuffleQuestions(get(oneQuestion, 'answers', []).map(item => {
         return { name: item, id: `${oneQuestion.id}#${item == oneQuestion.correct}` }

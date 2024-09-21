@@ -56,9 +56,11 @@ const dataConfirmBtnEmp = async (chat_id = '', list = [], count = 1, cbName = ''
 
 
     if (result.length > 10) {
+
+        let countNext = (result.length - next) > 10 ? 10 : (result.length - next)
         let paginationBtn = [
-            prev == 0 ? undefined : { text: '⬅️Oldingi', callback_data: `${objCb[cbName]}#prev#${prev}` },
-            nextCount != 0 ? { text: 'Keyingi➡️', callback_data: `${objCb[cbName]}#next#${next}` } : undefined
+            prev == 0 ? undefined : { text: `⬅️${10} - Oldingi`, callback_data: `${objCb[cbName]}#prev#${prev}` },
+            nextCount != 0 ? { text: `Keyingi + ${countNext}➡️`, callback_data: `${objCb[cbName]}#next#${next}` } : undefined
         ]
 
         arr.push(paginationBtn.filter(item => item))
