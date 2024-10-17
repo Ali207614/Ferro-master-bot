@@ -442,7 +442,6 @@ let adminTestManagement = {
                 bot.deleteMessage(chat_id, deleteMessage.message_id)
                 product = newProduct
             }
-
             if (get(user, 'custom.statusBtn') == 3) {
                 let questions = await Question.find({ isDeleted: false, 'category.id': data[1] })
                 let testResult = await TestResult.find({ 'category.id': data[1], full: true, chat_id })
@@ -1102,7 +1101,6 @@ let userCallback = {
             let product = await ChildProduct.find({ 'parentProduct.id': data[1] })
             let testResult = await TestResult.find({ productId: data[1], chat_id })
             let questions = await Question.find({ isDeleted: false, productId: data[1] })
-
             if (product.length == 0) {
                 let deleteMessage = await sendMessageHelper(chat_id, 'Loading...')
                 let newProduct = await ferroController.getChildProduct(data[1])
@@ -1112,8 +1110,10 @@ let userCallback = {
                 product = newProduct
             }
             if (product?.length == 0) {
-                await sendMessageHelper(chat_id, "Mavjud emas")
-                return
+                let parentProduct = await Product.find({ 'id': data[1] }).lean()
+                product = parentProduct.map(item => {
+                    return { ...item, parentProduct: { name: item.name, id: item.id, category: item.category, photos: item.photos } }
+                })
             }
 
             if (get(user, 'custom.statusBtn') == 2) {
@@ -1162,12 +1162,46 @@ let userCallback = {
             let text = `*🛠️ Mahsulotni tanlang*\n\n` +
                 `*🔍 Mahsulot joyi*: \`${get(product, '[0].parentProduct.category.parent.name.textUzLat', '')} > ${get(product, '[0].parentProduct.category.name.textUzLat')} > ${get(product, '[0].parentProduct.name.textUzLat')}\`\n\n` +
                 `Iltimos, quyidagi ichki mahsulotlardan birini tanlang`
-            let productBtn = product.filter(item => !item.isDisabled).map(item => {
+            let productBtn = product.filter(item => !item?.isDisabled).map(item => {
                 return { name: get(item, 'name.textUzLat', '-'), id: get(item, 'id') }
             })
 
             let btn = await dataConfirmBtnEmp(chat_id, productBtn, 2, 'childProduct')
             if (questions.length) {
+                let elektrAksessuarlar = 1005271
+                let instrumentlar = 1005269
+                let mahkamlovchi = 1000058
+
+                let status = false
+                if (get(user, 'custom.categories.id') == instrumentlar) {
+                    let questionsInstrumental = await Question.find({ isDeleted: false, 'category.parent.id': elektrAksessuarlar })
+                    let resultInstrumental = await TestResult.find({ full: true, 'category.parent.id': elektrAksessuarlar, confirm: 1 })
+                    let resultElektr = await TestResult.find({ 'category.parent.id': instrumentlar })
+                    if (resultElektr.length == 0) {
+                        status = false
+                    }
+                    else if (questionsInstrumental.length == 0) {
+                        status = true
+                    }
+                    else if (questionsInstrumental.length > resultInstrumental.length) {
+                        status = true
+                    }
+                }
+                else if (get(user, 'custom.categories.id') == mahkamlovchi) {
+                    let questionsInstrumental = await Question.find({ isDeleted: false, 'category.parent.id': instrumentlar })
+                    let resultInstrumental = await TestResult.find({ full: true, 'category.parent.id': instrumentlar, confirm: 1 })
+                    let resultMahkam = await TestResult.find({ 'category.parent.id': mahkamlovchi })
+                    if (resultMahkam.length == 0) {
+                        status = false
+                    }
+                    else if (questionsInstrumental.length == 0) {
+                        status = true
+                    }
+                    else if (questionsInstrumental.length > resultInstrumental.length) {
+                        status = true
+                    }
+                }
+
                 // confirm 0 tasdiqlanmagan , 1 tasdiqlangan 2 reject bo'lgan 
                 let textObj = {
                     '0': "⏳ Tasdiqlanishi kutilyapti",
@@ -1177,8 +1211,8 @@ let userCallback = {
                 let tests = testResult.filter(item => item.full)
                 let confirmTest = tests.find(item => item.confirm == 1)
                 btn.reply_markup.inline_keyboard = [...btn.reply_markup.inline_keyboard, [{
-                    text: tests.length ? textObj[confirmTest ? 1 : tests[tests.length - 1].confirm] : `📝 Testni boshlash`,
-                    callback_data: 'startTestConfirm'
+                    text: (status && !confirmTest && tests[tests.length - 1]?.confirm != 0) ? `🔒 Test bloklangan` : (tests.length ? textObj[confirmTest ? 1 : tests[tests.length - 1]?.confirm] : `📝 Testni boshlash`),
+                    callback_data: 'startTestConfirm' + ((status && !confirmTest && tests[tests.length - 1]?.confirm != 0) ? '#3' : '')
                 }]]
             }
 
@@ -1385,6 +1419,40 @@ let userCallback = {
 
 
             if (questions.length) {
+                let elektrAksessuarlar = 1005271
+                let instrumentlar = 1005269
+                let mahkamlovchi = 1000058
+
+                let status = false
+                if (get(user, 'custom.categories.id') == instrumentlar) {
+                    let questionsInstrumental = await Question.find({ isDeleted: false, 'category.parent.id': elektrAksessuarlar })
+                    let resultInstrumental = await TestResult.find({ full: true, 'category.parent.id': elektrAksessuarlar, confirm: 1 })
+                    let resultElektr = await TestResult.find({ 'category.parent.id': instrumentlar })
+                    if (resultElektr.length == 0) {
+                        status = false
+                    }
+                    else if (questionsInstrumental.length == 0) {
+                        status = true
+                    }
+                    else if (questionsInstrumental.length > resultInstrumental.length) {
+                        status = true
+                    }
+                }
+                else if (get(user, 'custom.categories.id') == mahkamlovchi) {
+                    let questionsInstrumental = await Question.find({ isDeleted: false, 'category.parent.id': instrumentlar })
+                    let resultInstrumental = await TestResult.find({ full: true, 'category.parent.id': instrumentlar, confirm: 1 })
+                    let resultMahkam = await TestResult.find({ 'category.parent.id': mahkamlovchi })
+                    if (resultMahkam.length == 0) {
+                        status = false
+                    }
+                    else if (questionsInstrumental.length == 0) {
+                        status = true
+                    }
+                    else if (questionsInstrumental.length > resultInstrumental.length) {
+                        status = true
+                    }
+                }
+
                 // confirm 0 tasdiqlanmagan , 1 tasdiqlangan 2 reject bo'lgan 
                 let textObj = {
                     '0': "⏳ Tasdiqlanishi kutilyapti",
@@ -1394,8 +1462,8 @@ let userCallback = {
                 let tests = testResult.filter(item => item.full)
                 let confirmTest = tests.find(item => item.confirm == 1)
                 btn.reply_markup.inline_keyboard = [...btn.reply_markup.inline_keyboard, [{
-                    text: tests.length ? textObj[confirmTest ? 1 : tests[tests.length - 1].confirm] : `📝 Testni boshlash`,
-                    callback_data: 'startTestConfirm'
+                    text: (status && !confirmTest && tests[tests.length - 1]?.confirm != 0) ? `🔒 Test bloklangan` : (tests.length ? textObj[confirmTest ? 1 : tests[tests.length - 1]?.confirm] : `📝 Testni boshlash`),
+                    callback_data: 'startTestConfirm' + ((status && !confirmTest && tests[tests.length - 1]?.confirm != 0) ? '#3' : '')
                 }]]
             }
 
@@ -1420,6 +1488,16 @@ let userCallback = {
             let deleteMessage = await sendMessageHelper(chat_id, 'Loading...')
 
             let childProduct = await ChildProduct.findOne({ id: data[1] })
+            if (!childProduct) {
+                let parentProduct = await Product.find({ 'id': data[1] }).lean()
+                if (parentProduct.length == 0) {
+                    await sendMessageHelper(chat_id, 'Mavjud emas')
+                    return
+                }
+                childProduct = parentProduct.map(item => {
+                    return { ...item, parentProduct: { name: item.name, id: item.id, category: item.category, photos: item.photos } }
+                })[0]
+            }
             let photoUrl = `${process.env.ferro_api}/file/thumbnail/square/1280/` + get(childProduct, 'parentProduct.photos[0].photo.url', '');
             let text = generateProductText(childProduct)
             let updateId;
@@ -1450,6 +1528,9 @@ let userStartTestCallback = {
         selfExecuteFn: async ({ chat_id, data, msg }) => {
             try {
                 let user = await infoUser({ chat_id });
+                if (data[1] == 3) {
+                    return
+                }
                 let questions = await Question.find({ isDeleted: false, productId: get(user, 'custom.selectedProduct.id') })
                 let testResult = await TestResult.find({ productId: get(user, 'custom.selectedProduct.id'), full: true, chat_id })
                 let success = testResult.find(item => item.confirm == 1)

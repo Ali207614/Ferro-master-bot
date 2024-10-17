@@ -56,7 +56,10 @@ const ProductSchema = new Schema({
         id: { type: Number, },
         name: { type: String, }
     },
+    searchableName: { type: String, required: false },
     category: CategorySchema,
+    photos: [PhotoSchema],
+    unit: { type: mongoose.Schema.Types.Mixed, default: {} },
     photos: [PhotoSchema],
     isParent: { type: Boolean, default: true },
     externalId: { type: String, default: "" },
