@@ -66,7 +66,7 @@ let adminCallBack = {
 
                     let master = await User.findOne({ emp_id: get(newUser, 'master') })
                     if (master && data[1] == 1) {
-                        bot.sendMessage(get(master, 'chat_id'), updateUserInfo(newUser, data[1] == 1, admin))
+                        bot.sendMessage(get(master, 'chat_id'), updateUserInfo(newUser, data[1] == 1, admin), { parse_mode: 'MarkdownV2' })
                     }
 
                     bot.editMessageText(updateUserInfo(newUser, data[1] == 1, admin), {
