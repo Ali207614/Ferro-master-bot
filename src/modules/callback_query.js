@@ -517,7 +517,6 @@ let adminTestManagement = {
                 ...btn
             })
             let newParent = get(product, '[0].category.parent', {})
-            console.log(data[1])
             updateCustom(chat_id, {
                 product,
                 categories: newParent,
@@ -1180,7 +1179,6 @@ let userCallback = {
 
                 let currentStepIndex = selectProduct.findIndex(item => item.id == get(user, 'custom.selectSubCategoriesId'));
                 const sliced = selectProduct.slice(0, currentStepIndex);
-                console.log(sliced.length, ' bu sliced')
                 if (sliced.length) {
                     let results = await TestResult.find({
                         full: true,
@@ -1192,8 +1190,6 @@ let userCallback = {
                         isDeleted: false,
                         'category.id': { $in: sliced.map(item => item.id) }
                     });
-                    console.log(results.length, ' bu result')
-                    console.log(questionsResults.length, ' bu question')
 
                     for (let step of sliced) {
                         let stepId = step.id;
@@ -1202,11 +1198,10 @@ let userCallback = {
 
                         let hasFullResult = results.filter(r => r.category.id == stepId);
 
-                        console.log(hasQuestions.length, hasFullResult.length)
                         if (hasQuestions.length) {
                             if (hasQuestions.length != hasFullResult.length) {
                                 status = true;
-                                break; // Tekshirishni to'xtatamiz, boshqa bosqichlarni ko'rish shart emas
+                                break;
                             }
                         }
 
@@ -1256,54 +1251,7 @@ let userCallback = {
                 }
 
 
-                // Natijaga qarab, statusni chiqarish
-                if (status) {
-                    console.log("Joriy bosqich bloklandi, oldingi bosqichlarni to'liq bajarish kerak.");
-                } else {
-                    console.log("Joriy bosqichni ishlatish mumkin.");
-                }
 
-
-
-                // if (productListIndex > 0) {
-                // let result = await TestResult.findOne({ full: true, 'productId': get(user, 'custom.product', [])[productListIndex - 1].id, confirm: 1 })
-                //     if (!result) {
-                //         status = true
-                //     }
-                // }
-
-                // let catalog = await Catalog.findOne({ id: })
-
-                // if (get(user, 'custom.categories.id') == instrumentlar) {
-                //     let questionsInstrumental = await Question.find({ isDeleted: false, 'category.parent.id': elektrAksessuarlar })
-                //     let resultInstrumental = await TestResult.find({ full: true, 'category.parent.id': elektrAksessuarlar, confirm: 1 })
-                //     let resultElektr = await TestResult.find({ 'category.parent.id': instrumentlar })
-                //     if (resultElektr.length == 0) {
-                //         status = false
-                //     }
-                //     else if (questionsInstrumental.length == 0) {
-                //         status = true
-                //     }
-                //     else if (questionsInstrumental.length > resultInstrumental.length) {
-                //         status = true
-                //     }
-                // }
-                // else if (get(user, 'custom.categories.id') == mahkamlovchi) {
-                //     let questionsInstrumental = await Question.find({ isDeleted: false, 'category.parent.id': instrumentlar })
-                //     let resultInstrumental = await TestResult.find({ full: true, 'category.parent.id': instrumentlar, confirm: 1 })
-                //     let resultMahkam = await TestResult.find({ 'category.parent.id': mahkamlovchi })
-                //     if (resultMahkam.length == 0) {
-                //         status = false
-                //     }
-                //     else if (questionsInstrumental.length == 0) {
-                //         status = true
-                //     }
-                //     else if (questionsInstrumental.length > resultInstrumental.length) {
-                //         status = true
-                //     }
-                // }
-
-                // confirm 0 tasdiqlanmagan , 1 tasdiqlangan 2 reject bo'lgan 
                 let textObj = {
                     '0': "⏳ Tasdiqlanishi kutilyapti",
                     '1': "✅ Test tasdiqlangan",
@@ -1524,33 +1472,80 @@ let userCallback = {
                 let instrumentlar = 1005269
                 let mahkamlovchi = 1000058
 
-                let status = false
-                if (get(user, 'custom.categories.id') == instrumentlar) {
-                    let questionsInstrumental = await Question.find({ isDeleted: false, 'category.parent.id': elektrAksessuarlar })
-                    let resultInstrumental = await TestResult.find({ full: true, 'category.parent.id': elektrAksessuarlar, confirm: 1 })
-                    let resultElektr = await TestResult.find({ 'category.parent.id': instrumentlar })
-                    if (resultElektr.length == 0) {
-                        status = false
-                    }
-                    else if (questionsInstrumental.length == 0) {
-                        status = true
-                    }
-                    else if (questionsInstrumental.length > resultInstrumental.length) {
-                        status = true
+                let status = false;
+
+                let selectProduct = get(user, 'custom.subCategory', []);
+
+                let currentStepIndex = selectProduct.findIndex(item => item.id == get(user, 'custom.selectSubCategoriesId'));
+                const sliced = selectProduct.slice(0, currentStepIndex);
+                if (sliced.length) {
+                    let results = await TestResult.find({
+                        full: true,
+                        'category.id': { $in: sliced.map(item => item.id) },
+                        confirm: 1
+                    });
+
+                    let questionsResults = await Question.find({
+                        isDeleted: false,
+                        'category.id': { $in: sliced.map(item => item.id) }
+                    });
+
+                    for (let step of sliced) {
+                        let stepId = step.id;
+
+                        let hasQuestions = questionsResults.filter(q => q.category.id == stepId);
+
+                        let hasFullResult = results.filter(r => r.category.id == stepId);
+
+                        if (hasQuestions.length) {
+                            if (hasQuestions.length != hasFullResult.length) {
+                                status = true;
+                                break;
+                            }
+                        }
+
+
                     }
                 }
-                else if (get(user, 'custom.categories.id') == mahkamlovchi) {
-                    let questionsInstrumental = await Question.find({ isDeleted: false, 'category.parent.id': instrumentlar })
-                    let resultInstrumental = await TestResult.find({ full: true, 'category.parent.id': instrumentlar, confirm: 1 })
-                    let resultMahkam = await TestResult.find({ 'category.parent.id': mahkamlovchi })
-                    if (resultMahkam.length == 0) {
-                        status = false
-                    }
-                    else if (questionsInstrumental.length == 0) {
-                        status = true
-                    }
-                    else if (questionsInstrumental.length > resultInstrumental.length) {
-                        status = true
+
+                if (!status) {
+                    let selectProductChild = get(user, 'custom.product', []);
+
+                    // Joriy bosqich raqami (masalan, 4)
+                    let currentStepIndexChild = selectProductChild.findIndex(item => item.id == get(user, 'custom.selectedProduct.id'));
+
+                    // Joriy bosqichga kirishdan oldingi bosqichlar
+                    const slicedChild = selectProductChild.slice(0, currentStepIndexChild);
+                    if (slicedChild.length) {
+                        // Barcha oldingi bosqichlar bo'yicha natijalarni olish
+                        let resultsChild = await TestResult.find({
+                            full: true,
+                            productId: { $in: slicedChild.map(item => item.id) },
+                            confirm: 1
+                        });
+
+                        // Barcha oldingi bosqichlar bo'yicha mavjud savollarni olish
+                        let questionsResultsChild = await Question.find({
+                            isDeleted: false,
+                            productId: { $in: slicedChild.map(item => item.id) }
+                        });
+                        // Har bir bosqich uchun savollar va javoblarni tekshirish
+                        for (let step of slicedChild) {
+                            let stepId = step.id;
+
+                            // Ushbu bosqich uchun savollar mavjudligini tekshirish
+                            let hasQuestions = questionsResultsChild.some(q => q.productId == stepId);
+
+                            // Ushbu bosqich uchun to'liq tasdiqlangan natija mavjudligini tekshirish
+                            let hasFullResult = resultsChild.some(r => r.productId == stepId);
+                            if (hasQuestions) {
+                                if (!hasFullResult) {
+                                    status = true;
+                                    break; // Tekshirishni to'xtatamiz, boshqa bosqichlarni ko'rish shart emas
+                                }
+                            }
+
+                        }
                     }
                 }
 
