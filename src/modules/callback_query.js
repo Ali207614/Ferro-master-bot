@@ -6,7 +6,7 @@ const { infoUser, updateUser, deleteUser, sendMessageHelper, updateCustom, updat
 const { empDynamicBtn } = require("../keyboards/function_keyboards")
 const { dataConfirmBtnEmp } = require("../keyboards/inline_keyboards")
 const { mainMenuByRoles, option, adminBtn } = require("../keyboards/keyboards")
-const { updateUserInfo, newUserInfo, confirmLoginText, userDeleteInfo, TestAdminInfo, TestInfo, generateProductText, generateTestText, escapeMarkdown, generateTestResultText, generateTestResultTextConfirm } = require("../keyboards/text")
+const { updateUserInfo, newUserInfo, confirmLoginText, userDeleteInfo, TestAdminInfo, TestInfo, generateProductText, generateTestText, escapeMarkdown, generateTestResultText, generateTestResultTextConfirm, updateUserInfoMaster } = require("../keyboards/text")
 const Catalog = require("../models/Catalog")
 const ChildProduct = require("../models/ChildProduct")
 const Product = require("../models/Product")
@@ -29,6 +29,13 @@ let adminCallBack = {
                     data[1] == 1 ?
                         await updateUser(data[2], { confirmed: true, custom: { ...get(newUser, 'custom', {}), confirm_admin: chat_id } }) :
                         await deleteUser({ chat_id: data[2] })
+
+
+                    let master = await User.findOne({ emp_id: get(newUser, 'master') })
+                    if (master && data[1] == 1) {
+                        bot.sendMessage(get(master, 'chat_id'), updateUserInfoMaster(newUser, data[1] == 1, admin), { parse_mode: 'MarkdownV2' })
+                    }
+
                     for (let i = 0; i < get(newUser, 'custom.listAdmin', []).length; i++) {
                         let adminChatId = get(newUser, 'custom.listAdmin', [])[i].chat_id
                         let adminMessageId = get(newUser, 'custom.listAdmin', [])[i].id
@@ -66,7 +73,7 @@ let adminCallBack = {
 
                     let master = await User.findOne({ emp_id: get(newUser, 'master') })
                     if (master && data[1] == 1) {
-                        bot.sendMessage(get(master, 'chat_id'), updateUserInfo(newUser, data[1] == 1, admin), { parse_mode: 'MarkdownV2' })
+                        bot.sendMessage(get(master, 'chat_id'), updateUserInfoMaster(newUser, data[1] == 1, admin), { parse_mode: 'MarkdownV2' })
                     }
 
                     bot.editMessageText(updateUserInfo(newUser, data[1] == 1, admin), {
@@ -1179,6 +1186,7 @@ let userCallback = {
 
                 let currentStepIndex = selectProduct.findIndex(item => item.id == get(user, 'custom.selectSubCategoriesId'));
                 const sliced = selectProduct.slice(0, currentStepIndex);
+                let productID = '';
                 if (sliced.length) {
                     let results = await TestResult.find({
                         full: true,
@@ -1201,6 +1209,7 @@ let userCallback = {
                         if (hasQuestions.length) {
                             if (hasQuestions.length != hasFullResult.length) {
                                 status = true;
+                                productID = hasQuestions[0]
                                 break;
                             }
                         }
@@ -1261,7 +1270,7 @@ let userCallback = {
                 let confirmTest = tests.find(item => item.confirm == 1)
                 btn.reply_markup.inline_keyboard = [...btn.reply_markup.inline_keyboard, [{
                     text: (status && !confirmTest && tests[tests.length - 1]?.confirm != 0) ? `🔒 Test bloklangan` : (tests.length ? textObj[confirmTest ? 1 : tests[tests.length - 1]?.confirm] : `📝 Testni boshlash`),
-                    callback_data: 'startTestConfirm' + ((status && !confirmTest && tests[tests.length - 1]?.confirm != 0) ? '#3' : '')
+                    callback_data: 'startTestConfirm' + ((status && !confirmTest && tests[tests.length - 1]?.confirm != 0) ? '#3#' : '')
                 }]]
             }
 

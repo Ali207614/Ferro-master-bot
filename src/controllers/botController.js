@@ -107,7 +107,6 @@ class botConroller {
             }
         }
         catch (err) {
-            console.log(err, ' bu err text')
             throw new Error(err);
         }
     }
@@ -153,7 +152,6 @@ class botConroller {
                 }
             }
         } catch (err) {
-            console.log(err, ' bu err calback')
             throw new Error(err);
         }
     }
@@ -179,7 +177,6 @@ class botConroller {
                     return
                 }
                 if (sap_user[0].jobTitle == 'User') {
-                    console.log(sap_user)
                     let master = await User.findOne({ emp_id: sap_user[0].U_Master, job_title: "Master" })
                     if (!master) {
                         sendMessageHelper(

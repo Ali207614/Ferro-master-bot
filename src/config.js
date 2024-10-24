@@ -5,8 +5,8 @@ require('dotenv').config();
 
 let token = process.env.token
 const conn_params = {
-    // serverNode: process.env.server_node,
-    serverNode: process.env.server_node_local,
+    serverNode: process.env.server_node,
+    // serverNode: process.env.server_node_local,
     uid: process.env.uid,
     pwd: process.env.password,
 };
@@ -44,6 +44,7 @@ let emoji = {
     'User': `👤`
 }
 
-let uncategorizedProduct = [1003947, 1002442]
+// let uncategorizedProduct = [1003947, 1002442]
+let uncategorizedProduct = []
 
 module.exports = { bot, personalChatId, conn_params, db, connectDB, rolesList, emojiWithName, emoji, uncategorizedProduct }

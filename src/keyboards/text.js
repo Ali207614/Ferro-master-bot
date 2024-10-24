@@ -40,6 +40,16 @@ let updateUserInfo = (newUser, confirmed, admin) => {
 *🕒 Registered At :* ${newUser.created_at ? new Date(newUser.created_at).toLocaleString() : 'N/A'}`;
     return text
 }
+let updateUserInfoMaster = (newUser, confirmed, admin) => {
+    let text = `
+*Nazoratga oling*
+
+*📄 Name :* ${newUser.last_name} ${newUser.first_name}
+*💼 Job Title :* **${emojiWithName[newUser.job_title]}**
+*📱 Number :* ${newUser.mobile}
+*🕒 Registered At :* ${newUser.created_at ? new Date(newUser.created_at).toLocaleString() : 'N/A'}`;
+    return text
+}
 
 
 let userDeleteInfo = (newUser, admin) => {
@@ -311,4 +321,4 @@ function generateTestResultTextConfirm({ question, totalQuestions, answers = [],
     return text
 }
 
-module.exports = { newUserInfo, updateUserInfo, confirmLoginText, deleteUserInfo, userDeleteInfo, confirmTestAdmin, TestAdminInfo, TestInfo, generateProductText, generateTestText, escapeMarkdown, generateTestResultText, generateTestResultTextConfirm }
+module.exports = { newUserInfo, updateUserInfo, confirmLoginText, deleteUserInfo, userDeleteInfo, confirmTestAdmin, TestAdminInfo, TestInfo, generateProductText, generateTestText, escapeMarkdown, generateTestResultText, generateTestResultTextConfirm, updateUserInfoMaster }
