@@ -1191,7 +1191,7 @@ let userCallback = {
                     let results = await TestResult.find({
                         full: true,
                         'category.id': { $in: sliced.map(item => item.id) },
-                        confirm: 1
+                        confirm: { $in: [0, 1] }
                     });
 
                     let questionsResults = await Question.find({
@@ -1209,7 +1209,9 @@ let userCallback = {
                         if (hasQuestions.length) {
                             if (hasQuestions.length != hasFullResult.length) {
                                 status = true;
-                                productID = hasQuestions[0]
+                                let resultsId = hasFullResult.map(item => item.productId)
+
+                                productID = hasQuestions.find(item => !resultsId.includes(item.productId))?.id
                                 break;
                             }
                         }
@@ -1231,7 +1233,7 @@ let userCallback = {
                         let resultsChild = await TestResult.find({
                             full: true,
                             productId: { $in: slicedChild.map(item => item.id) },
-                            confirm: 1
+                            confirm: { $in: [0, 1] }
                         });
 
                         // Barcha oldingi bosqichlar bo'yicha mavjud savollarni olish
@@ -1244,14 +1246,16 @@ let userCallback = {
                             let stepId = step.id;
 
                             // Ushbu bosqich uchun savollar mavjudligini tekshirish
-                            let hasQuestions = questionsResultsChild.some(q => q.productId == stepId);
+                            let hasQuestions = questionsResultsChild.filter(q => q.productId == stepId);
 
                             // Ushbu bosqich uchun to'liq tasdiqlangan natija mavjudligini tekshirish
-                            let hasFullResult = resultsChild.some(r => r.productId == stepId);
-                            if (hasQuestions) {
-                                if (!hasFullResult) {
+                            let hasFullResult = resultsChild.filter(r => r.productId == stepId);
+                            if (hasQuestions.length) {
+                                if (hasQuestions.length != hasFullResult.length) {
                                     status = true;
-                                    break; // Tekshirishni to'xtatamiz, boshqa bosqichlarni ko'rish shart emas
+                                    let resultsId = hasFullResult.map(item => item.productId)
+                                    productID = hasQuestions.find(item => !resultsId.includes(item.productId))?.id
+                                    break;
                                 }
                             }
 
@@ -1270,7 +1274,7 @@ let userCallback = {
                 let confirmTest = tests.find(item => item.confirm == 1)
                 btn.reply_markup.inline_keyboard = [...btn.reply_markup.inline_keyboard, [{
                     text: (status && !confirmTest && tests[tests.length - 1]?.confirm != 0) ? `🔒 Test bloklangan` : (tests.length ? textObj[confirmTest ? 1 : tests[tests.length - 1]?.confirm] : `📝 Testni boshlash`),
-                    callback_data: 'startTestConfirm' + ((status && !confirmTest && tests[tests.length - 1]?.confirm != 0) ? '#3#' : '')
+                    callback_data: 'startTestConfirm' + ((status && !confirmTest && tests[tests.length - 1]?.confirm != 0) ? `#3#${productID}` : '')
                 }]]
             }
 
@@ -1491,7 +1495,7 @@ let userCallback = {
                     let results = await TestResult.find({
                         full: true,
                         'category.id': { $in: sliced.map(item => item.id) },
-                        confirm: 1
+                        confirm: { $in: [0, 1] }
                     });
 
                     let questionsResults = await Question.find({
@@ -1530,7 +1534,7 @@ let userCallback = {
                         let resultsChild = await TestResult.find({
                             full: true,
                             productId: { $in: slicedChild.map(item => item.id) },
-                            confirm: 1
+                            confirm: { $in: [0, 1] }
                         });
 
                         // Barcha oldingi bosqichlar bo'yicha mavjud savollarni olish
@@ -1634,6 +1638,11 @@ let userStartTestCallback = {
             try {
                 let user = await infoUser({ chat_id });
                 if (data[1] == 3) {
+                    let questionsData = await Question.findOne({ isDeleted: false, id: data[2] })
+
+                    let text = `*⚠️ Diqqat: Avval ushbu bosqichni bajarishingiz kerak*\n\n` +
+                        `*🔍 Mahsulot joyi*: \`${get(questionsData, 'category.parent.name.textUzLat', '')} > ${get(questionsData, 'category.name.textUzLat')} > ${get(questionsData, 'name.textUzLat')}\`\n\n`
+                    let message = await sendMessageHelper(chat_id, text, { parse_mode: "MarkdownV2" })
                     return
                 }
                 let questions = await Question.find({ isDeleted: false, productId: get(user, 'custom.selectedProduct.id') })
