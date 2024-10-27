@@ -1190,6 +1190,7 @@ let userCallback = {
                 if (sliced.length) {
                     let results = await TestResult.find({
                         full: true,
+                        chat_id,
                         'category.id': { $in: sliced.map(item => item.id) },
                         confirm: { $in: [0, 1] }
                     });
@@ -1210,7 +1211,6 @@ let userCallback = {
                             if (hasQuestions.length != hasFullResult.length) {
                                 status = true;
                                 let resultsId = hasFullResult.map(item => item.productId)
-
                                 productID = hasQuestions.find(item => !resultsId.includes(item.productId))?.id
                                 break;
                             }
@@ -1232,6 +1232,7 @@ let userCallback = {
                         // Barcha oldingi bosqichlar bo'yicha natijalarni olish
                         let resultsChild = await TestResult.find({
                             full: true,
+                            chat_id,
                             productId: { $in: slicedChild.map(item => item.id) },
                             confirm: { $in: [0, 1] }
                         });
@@ -1494,6 +1495,7 @@ let userCallback = {
                 if (sliced.length) {
                     let results = await TestResult.find({
                         full: true,
+                        chat_id,
                         'category.id': { $in: sliced.map(item => item.id) },
                         confirm: { $in: [0, 1] }
                     });
@@ -1533,6 +1535,7 @@ let userCallback = {
                         // Barcha oldingi bosqichlar bo'yicha natijalarni olish
                         let resultsChild = await TestResult.find({
                             full: true,
+                            chat_id,
                             productId: { $in: slicedChild.map(item => item.id) },
                             confirm: { $in: [0, 1] }
                         });
@@ -1638,7 +1641,8 @@ let userStartTestCallback = {
             try {
                 let user = await infoUser({ chat_id });
                 if (data[1] == 3) {
-                    let questionsData = await Question.findOne({ isDeleted: false, id: data[2] })
+                    console.log(data, ' bu data')
+                    let questionsData = await Question.findOne({ isDeleted: false, id: Number(data[2]) })
 
                     let text = `*⚠️ Diqqat: Avval ushbu bosqichni bajarishingiz kerak*\n\n` +
                         `*🔍 Mahsulot joyi*: \`${get(questionsData, 'category.parent.name.textUzLat', '')} > ${get(questionsData, 'category.name.textUzLat')} > ${get(questionsData, 'name.textUzLat')}\`\n\n`

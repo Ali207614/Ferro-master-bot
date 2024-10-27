@@ -317,32 +317,42 @@ let userBtn = {
     },
     "🌐 Umumiy Natijalar": {
         selfExecuteFn: async ({ chat_id }) => {
-            let testResult = await TestResult.find({ full: true, confirm: 1 })
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+            let testResult = await TestResult.find({
+                full: true,
+                confirm: 1,
+                startDate: { $gte: sevenDaysAgo }
+            });
+
             if (testResult.length == 0) {
-                return await sendMessageHelper(chat_id, 'Mavjud emas')
+                return await sendMessageHelper(chat_id, 'Mavjud emas');
             }
+
             let chatIdCount = testResult.reduce((acc, item) => {
                 acc[item.chat_id] = (acc[item.chat_id] || 0) + 1;
                 return acc;
             }, {});
 
-            // Massivni chat_id ning uchrash chastotasiga qarab kamayish tartibida saralash
             let sorted = testResult.sort((a, b) => chatIdCount[b.chat_id] - chatIdCount[a.chat_id]);
 
-
-            // Takrorlanmas chat_id larni olish
             let uniqueChatIds = [...new Set(sorted.map(item => item.chat_id))];
 
-            let users = await User.find({ confirmed: true, chat_id: { $in: uniqueChatIds } })
+            let users = await User.find({ confirmed: true, chat_id: { $in: uniqueChatIds } });
             users = users.sort((a, b) => uniqueChatIds.indexOf(a.chat_id) - uniqueChatIds.indexOf(b.chat_id));
 
+            // Natijalarni chiqarish uchun matnni yaratish
+            let text = `🌐 Umumiy Natijalar (${sevenDaysAgo.toISOString().split('T')[0]} - ${new Date().toISOString().split('T')[0]} oralig'ida)\n\n`;
 
-            let text = `🌐 Umumiy Natijalar\n\n`
             for (let i = 0; i < users.length; i++) {
-                text += `${i + 1} : ${users[i].last_name} ${users[i].first_name}\n`
+                const userChatId = users[i].chat_id;
+                const workCount = chatIdCount[userChatId] || 0; // Foydalanuvchi nechta marta ishlagan
+                text += `${i + 1} : ${users[i].last_name} ${users[i].first_name} - ${workCount} ta ishlagan\n`;
             }
 
-            await sendMessageHelper(chat_id, text)
+            await sendMessageHelper(chat_id, text);
+
         },
         middleware: async ({ chat_id }) => {
             let user = await infoUser({ chat_id })
