@@ -1203,9 +1203,17 @@ let userCallback = {
                     for (let step of sliced) {
                         let stepId = step.id;
 
-                        let hasQuestions = questionsResults.filter(q => q.category.id == stepId);
-
                         let hasFullResult = results.filter(r => r.category.id == stepId);
+
+                        let filteredQuestions = questionsResults.filter(q => q.category.id == stepId).sort((a, b) => +b.productId - +a.productId);
+
+                        const hasQuestions = filteredQuestions.reduce((acc, current) => {
+                            const x = acc.find(item => item.productId == current.productId);
+                            if (!x) {
+                                acc.push(current);
+                            }
+                            return acc;
+                        }, []);
 
                         if (hasQuestions.length) {
                             if (hasQuestions.length != hasFullResult.length) {
@@ -1246,7 +1254,7 @@ let userCallback = {
 
 
 
-                            const filteredQuestions = questionsResultsChild.filter(q => q.productId == stepId);
+                            const filteredQuestions = questionsResultsChild.filter(q => q.productId == stepId).sort((a, b) => +b.productId - +a.productId);
 
                             const hasQuestions = filteredQuestions.reduce((acc, current) => {
                                 const x = acc.find(item => item.productId == current.productId);
@@ -1514,9 +1522,17 @@ let userCallback = {
                     for (let step of sliced) {
                         let stepId = step.id;
 
-                        let hasQuestions = questionsResults.filter(q => q.category.id == stepId);
-
                         let hasFullResult = results.filter(r => r.category.id == stepId);
+
+                        let filteredQuestions = questionsResults.filter(q => q.category.id == stepId).sort((a, b) => +b.productId - +a.productId);
+
+                        const hasQuestions = filteredQuestions.reduce((acc, current) => {
+                            const x = acc.find(item => item.productId == current.productId);
+                            if (!x) {
+                                acc.push(current);
+                            }
+                            return acc;
+                        }, []);
 
                         if (hasQuestions.length) {
                             if (hasQuestions.length != hasFullResult.length) {
@@ -1555,9 +1571,7 @@ let userCallback = {
                         for (let step of slicedChild) {
                             let stepId = step.id;
 
-
-
-                            const filteredQuestions = questionsResultsChild.filter(q => q.productId == stepId);
+                            const filteredQuestions = questionsResultsChild.filter(q => q.productId == stepId).sort((a, b) => +b.productId - +a.productId);
 
                             const hasQuestions = filteredQuestions.reduce((acc, current) => {
                                 const x = acc.find(item => item.productId == current.productId);
