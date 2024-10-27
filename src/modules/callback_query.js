@@ -467,7 +467,7 @@ let adminTestManagement = {
                     }
                     return
                 }
-                let productIdList = [...new Set(questions.map(item => +item.productId))]
+                let productIdList = [...new Set(questions.map(item => +item.productId))].sort((a, b) => b - a)
                 let text = ''
                 for (let i = 0; i < productIdList.length; i++) {
                     let oneQuestion = questions.find(item => item.productId == productIdList[i])
@@ -1219,8 +1219,9 @@ let userCallback = {
 
                     }
                 }
-
+                console.log(status, productID)
                 if (!status) {
+                    console.log("tushdi")
                     let selectProductChild = get(user, 'custom.product', []);
 
                     // Joriy bosqich raqami (masalan, 4)
@@ -1242,12 +1243,21 @@ let userCallback = {
                             isDeleted: false,
                             productId: { $in: slicedChild.map(item => item.id) }
                         });
-                        // Har bir bosqich uchun savollar va javoblarni tekshirish
                         for (let step of slicedChild) {
                             let stepId = step.id;
 
-                            // Ushbu bosqich uchun savollar mavjudligini tekshirish
-                            let hasQuestions = questionsResultsChild.filter(q => q.productId == stepId);
+
+
+                            const filteredQuestions = questionsResultsChild.filter(q => q.productId == stepId);
+
+                            const hasQuestions = filteredQuestions.reduce((acc, current) => {
+                                // Agar `productId` allaqachon `acc` da bo'lmasa, uni qo'shamiz
+                                const x = acc.find(item => item.productId == current.productId);
+                                if (!x) {
+                                    acc.push(current);
+                                }
+                                return acc;
+                            }, []);
 
                             // Ushbu bosqich uchun to'liq tasdiqlangan natija mavjudligini tekshirish
                             let hasFullResult = resultsChild.filter(r => r.productId == stepId);
