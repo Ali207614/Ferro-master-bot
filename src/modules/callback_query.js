@@ -1219,9 +1219,7 @@ let userCallback = {
 
                     }
                 }
-                console.log(status, productID)
                 if (!status) {
-                    console.log("tushdi")
                     let selectProductChild = get(user, 'custom.product', []);
 
                     // Joriy bosqich raqami (masalan, 4)
@@ -1251,7 +1249,6 @@ let userCallback = {
                             const filteredQuestions = questionsResultsChild.filter(q => q.productId == stepId);
 
                             const hasQuestions = filteredQuestions.reduce((acc, current) => {
-                                // Agar `productId` allaqachon `acc` da bo'lmasa, uni qo'shamiz
                                 const x = acc.find(item => item.productId == current.productId);
                                 if (!x) {
                                     acc.push(current);
@@ -1259,7 +1256,6 @@ let userCallback = {
                                 return acc;
                             }, []);
 
-                            // Ushbu bosqich uchun to'liq tasdiqlangan natija mavjudligini tekshirish
                             let hasFullResult = resultsChild.filter(r => r.productId == stepId);
                             if (hasQuestions.length) {
                                 if (hasQuestions.length != hasFullResult.length) {
@@ -1525,6 +1521,8 @@ let userCallback = {
                         if (hasQuestions.length) {
                             if (hasQuestions.length != hasFullResult.length) {
                                 status = true;
+                                let resultsId = hasFullResult.map(item => item.productId)
+                                productID = hasQuestions.find(item => !resultsId.includes(item.productId))?.id
                                 break;
                             }
                         }
@@ -1532,12 +1530,11 @@ let userCallback = {
 
                     }
                 }
-
                 if (!status) {
                     let selectProductChild = get(user, 'custom.product', []);
 
                     // Joriy bosqich raqami (masalan, 4)
-                    let currentStepIndexChild = selectProductChild.findIndex(item => item.id == get(user, 'custom.selectedProduct.id'));
+                    let currentStepIndexChild = selectProductChild.findIndex(item => item.id == data[1]);
 
                     // Joriy bosqichga kirishdan oldingi bosqichlar
                     const slicedChild = selectProductChild.slice(0, currentStepIndexChild);
@@ -1555,19 +1552,28 @@ let userCallback = {
                             isDeleted: false,
                             productId: { $in: slicedChild.map(item => item.id) }
                         });
-                        // Har bir bosqich uchun savollar va javoblarni tekshirish
                         for (let step of slicedChild) {
                             let stepId = step.id;
 
-                            // Ushbu bosqich uchun savollar mavjudligini tekshirish
-                            let hasQuestions = questionsResultsChild.some(q => q.productId == stepId);
 
-                            // Ushbu bosqich uchun to'liq tasdiqlangan natija mavjudligini tekshirish
-                            let hasFullResult = resultsChild.some(r => r.productId == stepId);
-                            if (hasQuestions) {
-                                if (!hasFullResult) {
+
+                            const filteredQuestions = questionsResultsChild.filter(q => q.productId == stepId);
+
+                            const hasQuestions = filteredQuestions.reduce((acc, current) => {
+                                const x = acc.find(item => item.productId == current.productId);
+                                if (!x) {
+                                    acc.push(current);
+                                }
+                                return acc;
+                            }, []);
+
+                            let hasFullResult = resultsChild.filter(r => r.productId == stepId);
+                            if (hasQuestions.length) {
+                                if (hasQuestions.length != hasFullResult.length) {
                                     status = true;
-                                    break; // Tekshirishni to'xtatamiz, boshqa bosqichlarni ko'rish shart emas
+                                    let resultsId = hasFullResult.map(item => item.productId)
+                                    productID = hasQuestions.find(item => !resultsId.includes(item.productId))?.id
+                                    break;
                                 }
                             }
 

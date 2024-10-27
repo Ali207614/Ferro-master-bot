@@ -6,8 +6,8 @@ const Question = require("../src/models/Question");
 
 let token = process.env.token
 const conn_params = {
-    serverNode: process.env.server_node,
-    // serverNode: process.env.server_node_local,
+    // serverNode: process.env.server_node,
+    serverNode: process.env.server_node_local,
     uid: process.env.uid,
     pwd: process.env.password,
 };
@@ -23,22 +23,6 @@ const connectDB = async () => {
     try {
         await mongoose.connect(process.env.mongo_url_local);
         // await mongoose.connect(process.env.mongo_url);
-
-
-
-
-
-
-
-        // Question.insertMany(data.map(item => {
-        //     return { ...item, chat_id: 561932032 }
-        // })).then(data => {
-        //     console.log('boldi')
-        // }).catch(e => {
-        //     console.log(e, ' bolmadi')
-        // });
-
-
 
         console.log('MongoDBga ulanish muvaffaqiyatli amalga oshirildi');
     } catch (err) {
