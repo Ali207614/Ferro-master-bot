@@ -1,13 +1,13 @@
 const TelegramAPi = require("node-telegram-bot-api");
 const mongoose = require('mongoose');
 require('dotenv').config();
-const Question = require("../src/models/Question");
 
 
 let token = process.env.token
+// let token = process.env.test_token
 const conn_params = {
-    serverNode: process.env.server_node,
-    // serverNode: process.env.server_node_local,
+    // serverNode: process.env.server_node,
+    serverNode: process.env.server_node_local,
     uid: process.env.uid,
     pwd: process.env.password,
 };
