@@ -1692,7 +1692,7 @@ let userCallback = {
 
             let childProduct = await ChildProduct.findOne({ id: data[1] })
             if (!childProduct) {
-                let parentProduct = await Product.find({ 'id': data[1] }).lean()
+                let parentProduct = get(user, 'custom.newProducts') ? await NewProduct.find({ 'id': data[1] }).lean() : await Product.find({ 'id': data[1] }).lean()
                 if (parentProduct.length == 0) {
                     await sendMessageHelper(chat_id, 'Mavjud emas')
                     return
