@@ -60,7 +60,11 @@ const testResultsSchema = new Schema({
     name: nameSchema,
     category: categorySchema,
     full: { type: Boolean, default: false },
-    confirm: { type: Number, default: 0 }
+    confirm: { type: Number, default: 0 },
+    newProducts: {
+        type: Boolean,
+        default: false
+    }
 });
 // confirm 0 tasdiqlanmagan , 1 tasdiqlangan 2 reject bo'lgan 
 

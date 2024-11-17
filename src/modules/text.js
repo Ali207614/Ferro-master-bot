@@ -120,18 +120,16 @@ let adminBtn = {
             }
             let catalogBtn = catalog.map(item => {
                 return { name: get(item, 'name.textUzLat'), id: get(item, 'id') }
-            }).filter(el => !uncategorizedProduct.includes(el.id))
+            })
 
-            let directProduct = catalog.map(item => {
-                return { name: get(item, 'name.textUzLat'), id: get(item, 'id') }
-            }).filter(el => uncategorizedProduct.includes(el.id))
+            let newMenu = { name: "Yangi mahsulotlar", id: '0' }
 
-            let btnCatalog = await dataConfirmBtnEmp(chat_id, catalogBtn, 1, 'catalogAdmin')
-            let btnCategory = await dataConfirmBtnEmp(chat_id, directProduct, 1, 'categoriesAdmin')
+            let btnCatalog = await dataConfirmBtnEmp(chat_id, [...catalogBtn, newMenu], 1, 'catalogAdmin')
+
 
             let btn = {
                 reply_markup: {
-                    inline_keyboard: [...get(btnCatalog, 'reply_markup.inline_keyboard', []), ...get(btnCategory, 'reply_markup.inline_keyboard', [])].filter(item => item[0].callback_data != 'backToCatalog'),
+                    inline_keyboard: get(btnCatalog, 'reply_markup.inline_keyboard', []).filter(item => item[0].callback_data != 'backToCatalog'),
                     resize_keyboard: true
                 }
             }
@@ -292,18 +290,14 @@ let userBtn = {
             }
             let catalogBtn = catalog.map(item => {
                 return { name: get(item, 'name.textUzLat'), id: get(item, 'id') }
-            }).filter(el => !uncategorizedProduct.includes(el.id))
+            })
 
-            let directProduct = catalog.map(item => {
-                return { name: get(item, 'name.textUzLat'), id: get(item, 'id') }
-            }).filter(el => uncategorizedProduct.includes(el.id))
-
-            let btnCatalog = await dataConfirmBtnEmp(chat_id, catalogBtn, 1, 'catalogAdmin')
-            let btnCategory = await dataConfirmBtnEmp(chat_id, directProduct, 1, 'categoriesAdmin')
+            let newMenu = { name: "Yangi mahsulotlar", id: '0' }
+            let btnCatalog = await dataConfirmBtnEmp(chat_id, [...catalogBtn, newMenu], 1, 'catalogAdmin')
 
             let btn = {
                 reply_markup: {
-                    inline_keyboard: [...get(btnCatalog, 'reply_markup.inline_keyboard', []), ...get(btnCategory, 'reply_markup.inline_keyboard', [])].filter(item => item[0].callback_data != 'backToCatalog'),
+                    inline_keyboard: get(btnCatalog, 'reply_markup.inline_keyboard', []).filter(item => item[0].callback_data != 'backToCatalog'),
                     resize_keyboard: true
                 }
             }
@@ -374,18 +368,15 @@ let userBtn = {
             }
             let catalogBtn = catalog.map(item => {
                 return { name: get(item, 'name.textUzLat'), id: get(item, 'id') }
-            }).filter(el => !uncategorizedProduct.includes(el.id))
+            })
 
-            let directProduct = catalog.map(item => {
-                return { name: get(item, 'name.textUzLat'), id: get(item, 'id') }
-            }).filter(el => uncategorizedProduct.includes(el.id))
+            let newMenu = { name: "Yangi mahsulotlar", id: '0' }
 
-            let btnCatalog = await dataConfirmBtnEmp(chat_id, catalogBtn, 1, 'catalogAdmin')
-            let btnCategory = await dataConfirmBtnEmp(chat_id, directProduct, 1, 'categoriesAdmin')
+            let btnCatalog = await dataConfirmBtnEmp(chat_id, [...catalogBtn, newMenu], 1, 'catalogAdmin')
 
             let btn = {
                 reply_markup: {
-                    inline_keyboard: [...get(btnCatalog, 'reply_markup.inline_keyboard', []), ...get(btnCategory, 'reply_markup.inline_keyboard', [])].filter(item => item[0].callback_data != 'backToCatalog'),
+                    inline_keyboard: get(btnCatalog, 'reply_markup.inline_keyboard', []).filter(item => item[0].callback_data != 'backToCatalog'),
                     resize_keyboard: true
                 }
             }
@@ -412,18 +403,15 @@ let userBtn = {
             }
             let catalogBtn = catalog.map(item => {
                 return { name: get(item, 'name.textUzLat'), id: get(item, 'id') }
-            }).filter(el => !uncategorizedProduct.includes(el.id))
+            })
 
-            let directProduct = catalog.map(item => {
-                return { name: get(item, 'name.textUzLat'), id: get(item, 'id') }
-            }).filter(el => uncategorizedProduct.includes(el.id))
+            let newMenu = { name: "Yangi mahsulotlar", id: '0' }
 
-            let btnCatalog = await dataConfirmBtnEmp(chat_id, catalogBtn, 1, 'catalogAdmin')
-            let btnCategory = await dataConfirmBtnEmp(chat_id, directProduct, 1, 'categoriesAdmin')
+            let btnCatalog = await dataConfirmBtnEmp(chat_id, [...catalogBtn, newMenu], 1, 'catalogAdmin')
 
             let btn = {
                 reply_markup: {
-                    inline_keyboard: [...get(btnCatalog, 'reply_markup.inline_keyboard', []), ...get(btnCategory, 'reply_markup.inline_keyboard', [])].filter(item => item[0].callback_data != 'backToCatalog'),
+                    inline_keyboard: get(btnCatalog, 'reply_markup.inline_keyboard', []).filter(item => item[0].callback_data != 'backToCatalog'),
                     resize_keyboard: true
                 }
             }

@@ -20,6 +20,8 @@ class botConroller {
                 sendMessageHelper(chat_id, "Tasdiqlash uchun Adminga jo'natilgan", option)
                 return
             }
+
+
             let btnTree = {
                 ...adminBtn,
                 ...executeBtn,

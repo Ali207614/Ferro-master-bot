@@ -9,6 +9,7 @@ const { mainMenuByRoles, option, adminBtn } = require("../keyboards/keyboards")
 const { updateUserInfo, newUserInfo, confirmLoginText, userDeleteInfo, TestAdminInfo, TestInfo, generateProductText, generateTestText, escapeMarkdown, generateTestResultText, generateTestResultTextConfirm, updateUserInfoMaster } = require("../keyboards/text")
 const Catalog = require("../models/Catalog")
 const ChildProduct = require("../models/ChildProduct")
+const NewProduct = require("../models/NewProduct")
 const Product = require("../models/Product")
 const Question = require("../models/Question")
 const TestResult = require("../models/TestResult")
@@ -416,10 +417,50 @@ let adminTestManagement = {
     catalogAdmin: {
         selfExecuteFn: async ({ chat_id, data, msg }) => {
             let categories = await Catalog.findOne({ id: data[1] })
+            let nameObj = {
+                textUzLat: 'Yangi mahsulotlar',
+                textUzCyr: 'Yangi mahsulotlar',
+                textRu: 'Yangi mahsulotlar',
+            }
+            if (data[1] == '0') {
+                let categoryList = await NewProduct.find()
+                if (categoryList.length == 0) {
+                    let deleteMessage = await sendMessageHelper(chat_id, 'Loading...')
+                    let newCategories = await ferroController.getNewProducts()
+                    categoryList = get(newCategories, 'productGroups[0].productGroup.products', [])
+                    let newCategoryList = categoryList.map(item => {
+                        return {
+                            ...item, ...item.product
+                        }
+                    })
+                    newCategoryList = newCategoryList.map(item => {
+                        return { ...item, category: { ...item.category, parent: { ...item.category.parent, name: nameObj } } }
+                    })
+                    await NewProduct.insertMany(newCategoryList);
+                    bot.deleteMessage(chat_id, deleteMessage.message_id)
+                    categoryList = newCategoryList
+                }
+
+                let newSubCategories = categoryList.map(item => {
+                    let subCategoryItem = get(item, 'category', {})
+                    return { id: subCategoryItem.id, name: subCategoryItem.name, isDisabled: subCategoryItem.isDisabled }
+                })
+                let setDataCategories = [...new Set(newSubCategories.map(item => item.id))].map(item => {
+                    return newSubCategories.find(el => el.id == item)
+                })
+                let newCategoriesObj = {
+                    name: nameObj,
+                    id: '0',
+                    isDisabled: false,
+                    subCategories: setDataCategories
+                }
+                categories = newCategoriesObj
+
+            }
             let text = `*🛠️ Kategoriyani tanlang*\n\n` +
                 `*🔍 Kategoriya joyi*: \`${get(categories, 'name.textUzLat', '')}\`\n\n` +
                 `Iltimos, quyidagi kategoriyalardan birini tanlang:`
-            let categoriesBtn = get(categories, 'subCategories', []).filter(item => !item.isDisabled).map(item => {
+            let categoriesBtn = get(categories, 'subCategories', []).filter(item => !item?.isDisabled).map(item => {
                 return { name: get(item, 'name.textUzLat', '-'), id: get(item, 'id') }
             })
             let btn = await dataConfirmBtnEmp(chat_id, categoriesBtn, 2, 'categoriesAdmin')
@@ -429,7 +470,9 @@ let adminTestManagement = {
                 parse_mode: 'MarkdownV2',
                 ...btn
             })
-            updateCustom(chat_id, { categories, subCategory: get(categories, 'subCategories', []) })
+            updateCustom(chat_id, {
+                categories, subCategory: get(categories, 'subCategories', []), newProducts: data[1] == 0
+            })
             return
         },
         middleware: async ({ chat_id, id }) => {
@@ -439,19 +482,27 @@ let adminTestManagement = {
     },
     categoriesAdmin: {
         selfExecuteFn: async ({ chat_id, data, msg }) => {
-            let product = await Product.find({ 'category.id': data[1] })
             let user = await infoUser({ chat_id })
-            if (product.length == 0) {
-                let deleteMessage = await sendMessageHelper(chat_id, 'Loading...')
-                let newProduct = await ferroController.getProductListCategory(data[1])
-
-                await Product.insertMany(newProduct);
-                bot.deleteMessage(chat_id, deleteMessage.message_id)
-                product = newProduct
+            let product = []
+            if (get(user, 'custom.newProducts')) {
+                let categoryList = await NewProduct.find({ 'category.id': data[1] })
+                product = categoryList
             }
+            else {
+                product = await Product.find({ 'category.id': data[1] })
+                if (product.length == 0) {
+                    let deleteMessage = await sendMessageHelper(chat_id, 'Loading...')
+                    let newProduct = await ferroController.getProductListCategory(data[1])
+
+                    await Product.insertMany(newProduct);
+                    bot.deleteMessage(chat_id, deleteMessage.message_id)
+                    product = newProduct
+                }
+            }
+
             if (get(user, 'custom.statusBtn') == 3) {
-                let questions = await Question.find({ isDeleted: false, 'category.id': data[1] })
-                let testResult = await TestResult.find({ 'category.id': data[1], full: true, chat_id })
+                let questions = await Question.find({ isDeleted: false, 'category.id': data[1], newProducts: get(user, 'custom.newProducts') })
+                let testResult = await TestResult.find({ 'category.id': data[1], full: true, chat_id, newProducts: get(user, 'custom.newProducts') })
 
                 if (questions.length == 0) {
                     if (get(user, 'custom.productMessageId')) {
@@ -619,19 +670,18 @@ let adminTestManagement = {
                 catalog = data
                 bot.deleteMessage(chat_id, deleteMessage.message_id)
             }
+
+            let newMenu = { name: "Yangi mahsulotlar", id: '0' }
+
             let catalogBtn = catalog.map(item => {
                 return { name: get(item, 'name.textUzLat'), id: get(item, 'id') }
-            }).filter(el => !uncategorizedProduct.includes(el.id))
+            })
 
-            let directProduct = catalog.map(item => {
-                return { name: get(item, 'name.textUzLat'), id: get(item, 'id') }
-            }).filter(el => uncategorizedProduct.includes(el.id))
+            let btnCatalog = await dataConfirmBtnEmp(chat_id, [...catalogBtn, newMenu], 1, 'catalogAdmin')
 
-            let btnCatalog = await dataConfirmBtnEmp(chat_id, catalogBtn, 1, 'catalogAdmin')
-            let btnCategory = await dataConfirmBtnEmp(chat_id, directProduct, 1, 'categoriesAdmin')
             let btn = {
                 reply_markup: {
-                    inline_keyboard: [...get(btnCatalog, 'reply_markup.inline_keyboard', []), ...get(btnCategory, 'reply_markup.inline_keyboard', [])].filter(item => item[0].callback_data != 'backToCatalog'),
+                    inline_keyboard: get(btnCatalog, 'reply_markup.inline_keyboard', []).filter(item => item[0].callback_data != 'backToCatalog'),
                     resize_keyboard: true
                 }
             }
@@ -679,8 +729,13 @@ let adminTestManagement = {
         selfExecuteFn: async ({ chat_id, data, msg }) => {
             let user = await infoUser({ chat_id });
             let deleteMessage = await sendMessageHelper(chat_id, 'Loading...')
-
-            let product = await Product.findOne({ 'id': data[1] });
+            let product
+            if (get(user, 'custom.newProducts')) {
+                product = await NewProduct.findOne({ 'id': data[1] });
+            }
+            else {
+                product = await Product.findOne({ 'id': data[1] });
+            }
             let photoUrl = `${process.env.ferro_api}/file/thumbnail/square/1280/` + get(product, 'photos[0].photo.url', '');
 
             updateBack(chat_id, { text: "Assalomu aleykum", btn: await mainMenuByRoles({ chat_id }), step: 1 });
@@ -729,7 +784,7 @@ let adminTestManagement = {
                 }
 
                 // Mahsulotni olish
-                let product = await Product.findOne({ 'id': id });
+                let product = get(user, 'custom.newProducts') ? await NewProduct.findOne({ id }) : await Product.findOne({ 'id': id });
                 if (!product) {
                     let text = `❗️ Xatolik!\nMahsulot topilmadi!`;
                     sendMessageHelper(chat_id, text);
@@ -757,6 +812,7 @@ let adminTestManagement = {
                         correct: correct, // To'g'ri javob
                         createdByChatId: chat_id, // Savolni yaratgan foydalanuvchi
                         createdAt: Date.now(),
+                        newProducts: get(user, 'custom.newProducts')
                     });
 
                     // Savolni saqlash
@@ -865,7 +921,7 @@ let adminTestManagement = {
         selfExecuteFn: async ({ chat_id, data, msg }) => {
             let user = await infoUser({ chat_id });
 
-            let question = await Question.findOne({ isDeleted: false, id: data[1] })
+            let question = await Question.findOne({ isDeleted: false, id: data[1], newProducts: get(user, 'custom.newProducts') })
             if (question.length == 0) {
                 sendMessageHelper(chat_id, 'Mavjud emas')
                 return
@@ -916,7 +972,7 @@ let adminTestManagement = {
     confirmTestResult: {
         selfExecuteFn: async ({ chat_id, data, msg }) => {
             let admin = await infoUser({ chat_id })
-            let testResult = await TestResult.findOne({ full: true, confirm: 0, test_id: data[2] });
+            let testResult = await TestResult.findOne({ full: true, confirm: 0, test_id: data[2], newProducts: get(user, 'custom.newProducts') });
 
             if (!testResult) {
                 bot.sendMessage(chat_id, 'Mavjud emas')
@@ -997,7 +1053,7 @@ let updateTestCallBack = {
     deleteList: {
         selfExecuteFn: async ({ chat_id, data, msg }) => {
             let user = await infoUser({ chat_id })
-            let question = await Question.findOne({ isDeleted: false, id: data[1] })
+            let question = await Question.findOne({ isDeleted: false, id: data[1], newProducts: get(user, 'custom.newProducts') })
             if (question.length == 0) {
                 sendMessageHelper(chat_id, 'Mavjud emas')
                 return
@@ -1055,7 +1111,7 @@ let updateTestCallBack = {
         selfExecuteFn: async ({ chat_id, data, msg }) => {
             if (data[1] == 'cancel') {
                 let user = await infoUser({ chat_id })
-                let question = await Question.findOne({ isDeleted: false, id: data[2] })
+                let question = await Question.findOne({ isDeleted: false, id: data[2], newProducts: get(user, 'custom.newProducts') })
                 if (question.length == 0) {
                     sendMessageHelper(chat_id, 'Mavjud emas')
                     return
@@ -1109,18 +1165,17 @@ let userCallback = {
         selfExecuteFn: async ({ chat_id, data, msg }) => {
             let user = await infoUser({ chat_id })
             let product = await ChildProduct.find({ 'parentProduct.id': data[1] })
-            let testResult = await TestResult.find({ productId: data[1], chat_id })
-            let questions = await Question.find({ isDeleted: false, productId: data[1] })
+            let testResult = await TestResult.find({ productId: data[1], chat_id, newProducts: get(user, 'custom.newProducts') })
+            let questions = await Question.find({ isDeleted: false, productId: data[1], newProducts: get(user, 'custom.newProducts') })
             if (product.length == 0) {
                 let deleteMessage = await sendMessageHelper(chat_id, 'Loading...')
                 let newProduct = await ferroController.getChildProduct(data[1])
-
                 await ChildProduct.insertMany(newProduct);
                 bot.deleteMessage(chat_id, deleteMessage.message_id)
                 product = newProduct
             }
             if (product?.length == 0) {
-                let parentProduct = await Product.find({ 'id': data[1] }).lean()
+                let parentProduct = get(user, 'custom.newProducts') ? await NewProduct.find({ 'id': data[1] }).lean() : await Product.find({ 'id': data[1] }).lean()
                 product = parentProduct.map(item => {
                     return { ...item, parentProduct: { name: item.name, id: item.id, category: item.category, photos: item.photos } }
                 })
@@ -1168,9 +1223,10 @@ let userCallback = {
 
                 return
             }
+            let fatherText = get(user, 'custom.newProducts') ? "Yangi mahsulotlar" : get(product, '[0].parentProduct.category.parent.name.textUzLat', '')
 
             let text = `*🛠️ Mahsulotni tanlang*\n\n` +
-                `*🔍 Mahsulot joyi*: \`${get(product, '[0].parentProduct.category.parent.name.textUzLat', '')} > ${get(product, '[0].parentProduct.category.name.textUzLat')} > ${get(product, '[0].parentProduct.name.textUzLat')}\`\n\n` +
+                `*🔍 Mahsulot joyi*: \`${fatherText} > ${get(product, '[0].parentProduct.category.name.textUzLat')} > ${get(product, '[0].parentProduct.name.textUzLat')}\`\n\n` +
                 `Iltimos, quyidagi ichki mahsulotlardan birini tanlang`
             let productBtn = product.filter(item => !item?.isDisabled).map(item => {
                 return { name: get(item, 'name.textUzLat', '-'), id: get(item, 'id') }
@@ -1178,9 +1234,6 @@ let userCallback = {
 
             let btn = await dataConfirmBtnEmp(chat_id, productBtn, 2, 'childProduct')
             if (questions.length) {
-                let elektrAksessuarlar = 1005271
-                let instrumentlar = 1005269
-                let mahkamlovchi = 1000058
                 let status = false;
 
                 let selectProduct = get(user, 'custom.subCategory', []);
@@ -1193,12 +1246,15 @@ let userCallback = {
                         full: true,
                         chat_id,
                         'category.id': { $in: sliced.map(item => item.id) },
-                        confirm: { $in: [0, 1] }
+                        confirm: { $in: [0, 1] },
+                        newProducts: get(user, 'custom.newProducts')
+
                     });
 
                     let questionsResults = await Question.find({
                         isDeleted: false,
-                        'category.id': { $in: sliced.map(item => item.id) }
+                        'category.id': { $in: sliced.map(item => item.id) },
+                        newProducts: get(user, 'custom.newProducts')
                     });
 
                     for (let step of sliced) {
@@ -1242,13 +1298,15 @@ let userCallback = {
                             full: true,
                             chat_id,
                             productId: { $in: slicedChild.map(item => item.id) },
-                            confirm: { $in: [0, 1] }
+                            confirm: { $in: [0, 1] },
+                            newProducts: get(user, 'custom.newProducts')
                         });
 
                         // Barcha oldingi bosqichlar bo'yicha mavjud savollarni olish
                         let questionsResultsChild = await Question.find({
                             isDeleted: false,
-                            productId: { $in: slicedChild.map(item => item.id) }
+                            productId: { $in: slicedChild.map(item => item.id) },
+                            newProducts: get(user, 'custom.newProducts')
                         });
                         for (let step of slicedChild) {
                             let stepId = step.id;
@@ -1278,8 +1336,6 @@ let userCallback = {
                         }
                     }
                 }
-
-
 
                 let textObj = {
                     '0': "⏳ Tasdiqlanishi kutilyapti",
@@ -1438,8 +1494,8 @@ let userCallback = {
     paginationChildProduct: {
         selfExecuteFn: async ({ chat_id, data, msg }) => {
             let user = await infoUser({ chat_id })
-            let testResult = await TestResult.find({ productId: get(user, 'custom.selectedProduct.id'), chat_id })
-            let questions = await Question.find({ isDeleted: false, productId: get(user, 'custom.selectedProduct.id') })
+            let testResult = await TestResult.find({ productId: get(user, 'custom.selectedProduct.id'), chat_id, newProducts: get(user, 'custom.newProducts') })
+            let questions = await Question.find({ isDeleted: false, productId: get(user, 'custom.selectedProduct.id'), newProducts: get(user, 'custom.newProducts') })
 
             let product = get(user, 'custom.childProduct')
 
@@ -1485,9 +1541,9 @@ let userCallback = {
 
                 return
             }
-
+            let fatherText = get(user, 'custom.newProducts') ? "Yangi mahsulotlar" : get(product, '[0].parentProduct.category.parent.name.textUzLat', '')
             let text = `*🛠️ Mahsulotni tanlang*\n\n` +
-                `*🔍 Mahsulot joyi*: \`${get(product, '[0].parentProduct.category.parent.name.textUzLat', '')} > ${get(product, '[0].parentProduct.category.name.textUzLat')} > ${get(product, '[0].parentProduct.name.textUzLat')}\`\n\n` +
+                `*🔍 Mahsulot joyi*: \`${fatherText} > ${get(product, '[0].parentProduct.category.name.textUzLat')} > ${get(product, '[0].parentProduct.name.textUzLat')}\`\n\n` +
                 `Iltimos, quyidagi ichki mahsulotlardan birini tanlang`
             let productBtn = product.filter(item => !item.isDisabled).map(item => {
                 return { name: get(item, 'name.textUzLat', '-'), id: get(item, 'id') }
@@ -1512,12 +1568,14 @@ let userCallback = {
                         full: true,
                         chat_id,
                         'category.id': { $in: sliced.map(item => item.id) },
-                        confirm: { $in: [0, 1] }
+                        confirm: { $in: [0, 1] },
+                        newProducts: get(user, 'custom.newProducts')
                     });
 
                     let questionsResults = await Question.find({
                         isDeleted: false,
-                        'category.id': { $in: sliced.map(item => item.id) }
+                        'category.id': { $in: sliced.map(item => item.id) },
+                        newProducts: get(user, 'custom.newProducts')
                     });
 
                     for (let step of sliced) {
@@ -1561,13 +1619,15 @@ let userCallback = {
                             full: true,
                             chat_id,
                             productId: { $in: slicedChild.map(item => item.id) },
-                            confirm: { $in: [0, 1] }
+                            confirm: { $in: [0, 1] },
+                            newProducts: get(user, 'custom.newProducts')
                         });
 
                         // Barcha oldingi bosqichlar bo'yicha mavjud savollarni olish
                         let questionsResultsChild = await Question.find({
                             isDeleted: false,
-                            productId: { $in: slicedChild.map(item => item.id) }
+                            productId: { $in: slicedChild.map(item => item.id) },
+                            newProducts: get(user, 'custom.newProducts')
                         });
                         for (let step of slicedChild) {
                             let stepId = step.id;
@@ -1672,16 +1732,15 @@ let userStartTestCallback = {
             try {
                 let user = await infoUser({ chat_id });
                 if (data[1] == 3) {
-                    console.log(data, ' bu data')
-                    let questionsData = await Question.findOne({ isDeleted: false, id: Number(data[2]) })
+                    let questionsData = await Question.findOne({ isDeleted: false, id: Number(data[2]), newProducts: get(user, 'custom.newProducts') })
 
                     let text = `*⚠️ Diqqat: Avval ushbu bosqichni bajarishingiz kerak*\n\n` +
                         `*🔍 Mahsulot joyi*: \`${get(questionsData, 'category.parent.name.textUzLat', '')} > ${get(questionsData, 'category.name.textUzLat')} > ${get(questionsData, 'name.textUzLat')}\`\n\n`
                     let message = await sendMessageHelper(chat_id, text, { parse_mode: "MarkdownV2" })
                     return
                 }
-                let questions = await Question.find({ isDeleted: false, productId: get(user, 'custom.selectedProduct.id') })
-                let testResult = await TestResult.find({ productId: get(user, 'custom.selectedProduct.id'), full: true, chat_id })
+                let questions = await Question.find({ isDeleted: false, productId: get(user, 'custom.selectedProduct.id'), newProducts: get(user, 'custom.newProducts') })
+                let testResult = await TestResult.find({ productId: get(user, 'custom.selectedProduct.id'), full: true, chat_id, newProducts: get(user, 'custom.newProducts') })
                 let success = testResult.find(item => item.confirm == 1)
                 let pending = testResult[testResult.length - 1]?.confirm == '0'
                 if (!success && pending) {
@@ -1734,7 +1793,7 @@ let userStartTestCallback = {
     startTest: {
         selfExecuteFn: async ({ chat_id, data, msg }) => {
             let user = await infoUser({ chat_id });
-            let questions = await Question.find({ isDeleted: false, productId: get(user, 'custom.selectedProduct.id') })
+            let questions = await Question.find({ isDeleted: false, productId: get(user, 'custom.selectedProduct.id'), newProducts: get(user, 'custom.newProducts') })
             if (data[1] == 'cancel') {
                 bot.deleteMessage(chat_id, get(msg, 'message.message_id'))
                 updateCustom(chat_id, { productMessageId: '' })
@@ -1794,7 +1853,7 @@ let userStartTestCallback = {
     test: {
         selfExecuteFn: async ({ chat_id, data, msg }) => {
             let user = await infoUser({ chat_id });
-            let questions = await Question.find({ isDeleted: false, productId: get(user, 'custom.selectedProduct.id') })
+            let questions = await Question.find({ isDeleted: false, productId: get(user, 'custom.selectedProduct.id'), newProducts: get(user, 'custom.newProducts') })
             let totalQuestions = questions
             if (questions.length) {
                 let currentQuest = questions.find(item => item?.id == data[1])
@@ -1836,7 +1895,7 @@ let userStartTestCallback = {
 
                     let full = answers.filter(item => item.isCorrect).length == totalQuestions.length
 
-                    let testResultNow = await TestResult.find({ productId: get(user, 'custom.selectedProduct.id'), full: true, chat_id })
+                    let testResultNow = await TestResult.find({ productId: get(user, 'custom.selectedProduct.id'), full: true, chat_id, newProducts: get(user, 'custom.newProducts') })
                     let success = testResultNow.find(item => item?.confirm == 1)
                     let testResult;
                     if (!success) {
@@ -1853,7 +1912,8 @@ let userStartTestCallback = {
                             startDate: get(user, 'custom.test.startDate', new Date()),
                             endDate,
                             answers,
-                            full
+                            full,
+                            newProducts: get(user, 'custom.newProducts')
                         });
                         // confirm 0 tasdiqlanmagan , 1 tasdiqlangan 2 reject bo'lgan 
                         await testResult.save();

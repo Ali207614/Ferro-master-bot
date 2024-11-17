@@ -3,12 +3,12 @@ const AutoIncrement = require('mongoose-sequence')(mongoose);
 const Schema = mongoose.Schema;
 
 const CategoryParentSchema = new Schema({
-    id: { type: Number, required: true },
+    id: { type: Number, required: false },
     name: {
-        id: { type: Number, required: true },
-        textUzLat: { type: String, required: true },
-        textUzCyr: { type: String, required: true },
-        textRu: { type: String, required: true }
+        id: { type: Number, required: false },
+        textUzLat: { type: String, required: false },
+        textUzCyr: { type: String, required: false },
+        textRu: { type: String, required: false }
     },
     icon: {
         id: { type: Number },
@@ -21,12 +21,12 @@ const CategoryParentSchema = new Schema({
 });
 
 const CategorySchema = new Schema({
-    id: { type: Number, required: true },
+    id: { type: Number, required: false },
     name: {
-        id: { type: Number, required: true },
-        textUzLat: { type: String, required: true },
-        textUzCyr: { type: String, required: true },
-        textRu: { type: String, required: true },
+        id: { type: Number, required: false },
+        textUzLat: { type: String, required: false },
+        textUzCyr: { type: String, required: false },
+        textRu: { type: String, required: false },
         textEn: { type: String }
     },
     parent: CategoryParentSchema,
@@ -37,28 +37,28 @@ const QuestionSchema = new mongoose.Schema({
     chat_id: { type: Number },
     productId: {
         type: String,
-        required: true
+        required: false
     },
     photo: [mongoose.Schema.Types.Mixed],
     name: {
-        id: { type: Number, required: true },
-        textUzLat: { type: String, required: true },
-        textUzCyr: { type: String, required: true },
-        textRu: { type: String, required: true }
+        id: { type: Number, required: false },
+        textUzLat: { type: String, required: false },
+        textUzCyr: { type: String, required: false },
+        textRu: { type: String, required: false }
     },
     category: CategorySchema,
     answerText: {
         type: String,
-        required: true,
+        required: false,
     },
     answers: [mongoose.Schema.Types.Mixed],
     correct: {
         type: mongoose.Schema.Types.Mixed, // To'g'ri javob
-        required: true
+        required: false
     },
     createdByChatId: {
         type: String, // Foydalanuvchi chat ID
-        required: true
+        required: false
     },
     isDeleted: {
         type: Boolean,
@@ -70,6 +70,10 @@ const QuestionSchema = new mongoose.Schema({
     },
     updatedAt: {
         type: Date,
+    },
+    newProducts: {
+        type: Boolean,
+        default: false
     }
 });
 

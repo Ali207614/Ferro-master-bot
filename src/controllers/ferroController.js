@@ -51,6 +51,15 @@ class ferroController {
             throw new Error('API request error:', error);
         }
     }
+
+    async getNewProducts(id) {
+        try {
+            const response = await axios.get(`${this.ferroApi}/page-content?key=new-products-bot`);
+            return response?.data
+        } catch (error) {
+            throw new Error('API request error:', error);
+        }
+    }
 }
 
 module.exports = new ferroController();

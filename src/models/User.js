@@ -10,6 +10,7 @@ const userSchema = new mongoose.Schema({
     mobile: { type: String },
     back: { type: [mongoose.Schema.Types.Mixed], default: [] },
     custom: { type: mongoose.Schema.Types.Mixed, default: {} },
+    newProducts: { type: [mongoose.Schema.Types.Mixed], default: [] },
     lastMessageId: { type: Number, default: 1 },
     master: { type: Number, required: false },
     confirmed: { type: Boolean, default: false },
