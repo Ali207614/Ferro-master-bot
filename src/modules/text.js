@@ -188,7 +188,7 @@ let adminTestManagementBtn = {
     "✏️ O'zgartirish": {
         selfExecuteFn: async ({ chat_id }) => {
             let user = await infoUser({ chat_id })
-            let questions = await Question.find({ isDeleted: false, productId: get(user, 'custom.selectedProduct.id') })
+            let questions = await Question.find({ isDeleted: false, productId: get(user, 'custom.selectedProduct.id'), newProducts: get(user, 'custom.newProducts') })
             if (questions.length == 0) {
                 await sendMessageHelper(chat_id, 'Mavjud emas')
                 return
@@ -224,7 +224,7 @@ let adminTestManagementBtn = {
     "🗑 O'chirish": {
         selfExecuteFn: async ({ chat_id }) => {
             let user = await infoUser({ chat_id })
-            let questions = await Question.find({ isDeleted: false, productId: get(user, 'custom.selectedProduct.id') })
+            let questions = await Question.find({ isDeleted: false, productId: get(user, 'custom.selectedProduct.id'), newProducts: get(user, 'custom.newProducts') })
             if (questions.length == 0) {
                 await sendMessageHelper(chat_id, 'Mavjud emas')
                 return
