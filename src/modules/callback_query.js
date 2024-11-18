@@ -554,8 +554,8 @@ let adminTestManagement = {
             let text = `*🛠️ Mahsulotni tanlang*\n\n` +
                 `*🔍 Mahsulot joyi*: \`${get(product, '[0].category.parent.name.textUzLat', '')} > ${get(product, '[0].category.name.textUzLat')}\`\n\n` +
                 `Iltimos, quyidagi mahsulotlardan birini tanlang:`
-            product = product.sort((a, b) => a.id - b.id)
-            let productBtn = product.filter(item => !item.isDisabled).map(item => {
+            product = product.sort((a, b) => a?.id - b?.id)
+            let productBtn = product.filter(item => !item?.isDisabled).map(item => {
                 return { name: get(item, 'name.textUzLat', '-'), id: get(item, 'id') }
             })
             let obj = {
@@ -972,7 +972,7 @@ let adminTestManagement = {
     confirmTestResult: {
         selfExecuteFn: async ({ chat_id, data, msg }) => {
             let admin = await infoUser({ chat_id })
-            let testResult = await TestResult.findOne({ full: true, confirm: 0, test_id: data[2], newProducts: get(user, 'custom.newProducts') });
+            let testResult = await TestResult.findOne({ full: true, confirm: 0, test_id: data[2] });
 
             if (!testResult) {
                 bot.sendMessage(chat_id, 'Mavjud emas')
@@ -1179,6 +1179,7 @@ let userCallback = {
                 product = parentProduct.map(item => {
                     return { ...item, parentProduct: { name: item.name, id: item.id, category: item.category, photos: item.photos } }
                 })
+
             }
 
             if (get(user, 'custom.statusBtn') == 2) {
@@ -1563,6 +1564,8 @@ let userCallback = {
 
                 let currentStepIndex = selectProduct.findIndex(item => item.id == get(user, 'custom.selectSubCategoriesId'));
                 const sliced = selectProduct.slice(0, currentStepIndex);
+                let productID = '';
+
                 if (sliced.length) {
                     let results = await TestResult.find({
                         full: true,
@@ -1688,10 +1691,11 @@ let userCallback = {
     childProduct: {
         selfExecuteFn: async ({ chat_id, data, msg }) => {
             let user = await infoUser({ chat_id });
-            let deleteMessage = await sendMessageHelper(chat_id, 'Loading...')
 
-            let childProduct = await ChildProduct.findOne({ id: data[1] })
+            let childProduct = await ChildProduct.findOne({ id: data[1] }).lean()
             if (!childProduct) {
+                let deleteMessage = await sendMessageHelper(chat_id, 'Loading...')
+
                 let parentProduct = get(user, 'custom.newProducts') ? await NewProduct.find({ 'id': data[1] }).lean() : await Product.find({ 'id': data[1] }).lean()
                 if (parentProduct.length == 0) {
                     await sendMessageHelper(chat_id, 'Mavjud emas')
@@ -1700,7 +1704,38 @@ let userCallback = {
                 childProduct = parentProduct.map(item => {
                     return { ...item, parentProduct: { name: item.name, id: item.id, category: item.category, photos: item.photos } }
                 })[0]
+                if (!get(childProduct, 'description.textUzLat')) {
+                    let details = await ferroController.getChildrenDetails(childProduct.id)
+                    childProduct = { ...childProduct, description: get(details, 'description', {}) }
+                    if (get(user, 'custom.newProducts')) {
+                        await NewProduct.updateOne(
+                            { 'id': data[1] },
+                            { $set: { description: get(details, 'description', {}) } }
+                        );
+                    }
+                    else {
+                        await Product.updateOne(
+                            { 'id': data[1] },
+                            { $set: { description: get(details, 'description', {}) } }
+                        );
+                    }
+
+                }
+                bot.deleteMessage(chat_id, deleteMessage.message_id)
             }
+            if (!get(childProduct, 'description.textUzLat')) {
+                let deleteMessage = await sendMessageHelper(chat_id, 'Loading...')
+
+                let details = await ferroController.getChildrenDetails(childProduct.id)
+                childProduct = { ...childProduct, description: get(details, 'description', {}) }
+                let n = await ChildProduct.updateOne(
+                    { 'id': data[1] },
+                    { $set: { description: get(details, 'description', {}) } }
+                );
+                bot.deleteMessage(chat_id, deleteMessage.message_id)
+
+            }
+
             let photoUrl = `${process.env.ferro_api}/file/thumbnail/square/1280/` + get(childProduct, 'parentProduct.photos[0].photo.url', '');
             let text = generateProductText(childProduct)
             let updateId;
@@ -1716,7 +1751,6 @@ let userCallback = {
                 updateId = await sendMessageHelper(chat_id, text, { parse_mode: 'MarkdownV2' });
             }
             updateCustom(chat_id, { productMessageId: updateId.message_id });
-            bot.deleteMessage(chat_id, deleteMessage.message_id)
             return
         },
         middleware: async ({ chat_id, id }) => {

@@ -188,9 +188,11 @@ function generateProductText(product) {
     const name = escapeMarkdown(get(product, 'name.textUzLat', 'Noma\'lum'));
     const searchableName = escapeMarkdown(get(product, 'searchableName', 'Noma\'lum'));
     const unit = escapeMarkdown(get(product, 'unit.name.textUzLat', 'Noma\'lum'));
+    const description = escapeMarkdown(get(product, 'description.textUzLat', 'Noma\'lum'));
 
     let text = `🛠 *Mahsulot haqida ma'lumot:*\n\n`;
     text += `*🔍 Mahsulot joyi*: \`${get(product, 'parentProduct.category.parent.name.textUzLat', '')} > ${get(product, 'parentProduct.category.name.textUzLat')} > ${get(product, 'parentProduct.name.textUzLat')}\`\n\n`
+    text += `*📝 Mahsulot tavsifi:* ${description}\n\n`;
     text += `*Nomi:* ${name}\n`;
     text += `*Qidirish nomi:* ${searchableName}\n`;
     text += `*Birlik:* ${unit}\n\n`;

@@ -52,6 +52,13 @@ const ProductSchema = new Schema({
         textUzCyr: { type: String, required: false },
         textRu: { type: String, required: false }
     },
+    description: {
+        id: { type: Number, required: false },
+        textUzLat: { type: String, required: false },
+        textUzCyr: { type: String, required: false },
+        textRu: { type: String, required: false },
+        textEn: { type: String, required: false }
+    },
     brand: {
         id: { type: Number, },
         name: { type: String, }

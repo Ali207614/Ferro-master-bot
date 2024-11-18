@@ -72,6 +72,13 @@ const ProductSchema = new mongoose.Schema({
 const MainSchema = new mongoose.Schema({
     id: Number,
     name: TextSchema,
+    description: {
+        id: { type: Number, required: false },
+        textUzLat: { type: String, required: false },
+        textUzCyr: { type: String, required: false },
+        textRu: { type: String, required: false },
+        textEn: { type: String, required: false }
+    },
     searchableName: String,
     category: CategorySchema,
     photos: [PhotoSchema],

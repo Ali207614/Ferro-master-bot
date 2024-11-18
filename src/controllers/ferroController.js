@@ -25,7 +25,6 @@ class ferroController {
     async getProductListCategory(id) {
         try {
             const response = await axios.get(`${this.ferroApi}/product/list/category/${id}`);
-            // console.log(`${this.ferroApi}/product/list/category/${id}`)
             return response?.data
         } catch (error) {
             throw new Error('API request error:', error);
@@ -34,7 +33,6 @@ class ferroController {
 
     async getChildProduct(id) {
         try {
-            // console.log(`${this.ferroApi}/product/${id}/children`)
             const response = await axios.get(`${this.ferroApi}/product/${id}/children`);
 
             return response?.data
@@ -60,6 +58,17 @@ class ferroController {
             throw new Error('API request error:', error);
         }
     }
+
+    async getChildrenDetails(id) {
+        try {
+            const response = await axios.get(`${this.ferroApi}/product/${id}`);
+            return response?.data
+        } catch (error) {
+            throw new Error('API request error:', error);
+        }
+    }
+
+
 }
 
 module.exports = new ferroController();
