@@ -40,6 +40,11 @@ const adminBtn = {
                     text: "📩 Kirish uchun tasdiqlash",
                 },
             ],
+            [
+                {
+                    text: "🔄 Tozalash",
+                },
+            ],
         ],
     },
 };

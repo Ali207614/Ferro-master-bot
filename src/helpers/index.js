@@ -113,6 +113,27 @@ function formatLocalDateToISOString(date) {
     return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${milliseconds}${offsetSign}${offsetHours}:${offsetMinutes}`;
 }
 
+function saveTextToFile(text, fileName, folderPath) {
+    const fullPath = path.join(folderPath, fileName);
+
+    // Agar fayl mavjud bo'lsa, uni qayta yozmaymiz
+    if (fs.existsSync(fullPath)) {
+        console.log(`${fileName} fayli allaqachon mavjud.`);
+        return fullPath;
+    }
+
+    // Papka mavjudligini tekshirish, agar mavjud bo'lmasa, yaratish
+    if (!fs.existsSync(folderPath)) {
+        fs.mkdirSync(folderPath, { recursive: true });
+    }
+
+    // Faylni yozish
+    fs.writeFileSync(fullPath, text);
+    console.log(`${fileName} fayli saqlandi.`);
+    return fullPath;
+}
+
+
 let executeUpdateFn = (key) => {
     let obj = {
         "updatePicture": {
@@ -189,6 +210,9 @@ function filterAndShuffleQuestions(questions, excludedIds = []) {
     return filteredQuestions;
 }
 
+
+
+
 module.exports = {
     parseDate,
     formatLocalDateToISOString,
@@ -205,5 +229,6 @@ module.exports = {
     updateQuestion,
     updateThenFn,
     sleepNow,
-    filterAndShuffleQuestions
+    filterAndShuffleQuestions,
+    saveTextToFile,
 }

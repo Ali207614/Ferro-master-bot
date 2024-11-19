@@ -1,5 +1,5 @@
 const { get } = require("lodash")
-const { emoji, rolesList, bot, uncategorizedProduct } = require("../config")
+const { emoji, rolesList, bot, resetAllModels } = require("../config")
 const ferroController = require("../controllers/ferroController")
 const { infoUser, updateCustom, updateStep, sendMessageHelper, updateUser, updateBack, sleepNow } = require("../helpers")
 const { empDynamicBtn } = require("../keyboards/function_keyboards")
@@ -134,6 +134,18 @@ let adminBtn = {
                 }
             }
             sendMessageHelper(chat_id, `Mahsulotlar katalogi 🔧`, btn)
+        },
+        middleware: async ({ chat_id }) => {
+            let user = await infoUser({ chat_id })
+            return get(user, 'job_title') == 'Admin' && get(user, 'confirmed')
+        },
+    },
+    "🔄 Tozalash": {
+        selfExecuteFn: async ({ chat_id }) => {
+            let deleteMessage = await sendMessageHelper(chat_id, 'Loading...')
+            resetAllModels()
+            bot.deleteMessage(chat_id, deleteMessage.message_id)
+            await sendMessageHelper(chat_id, '✅ Muvaffaqiyatli tozalandi')
         },
         middleware: async ({ chat_id }) => {
             let user = await infoUser({ chat_id })

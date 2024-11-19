@@ -1,14 +1,14 @@
-const { bot, personalChatId, conn_params, connectDB } = require("./config");
+
+const fs = require("fs").promises
+const path = require('path')
+const { bot, personalChatId, conn_params, connectDB, resetAllModels } = require("./config");
 const botController = require("./controllers/botController");
 const hanaClient = require("@sap/hana-client");
 require('dotenv').config();
 let tls = require('tls');
 const { sendMessageHelper } = require("./helpers");
 const cron = require('node-cron');
-const Catalog = require("./models/Catalog");
-const ChildProduct = require("./models/ChildProduct");
-const Product = require("./models/Product");
-const NewProduct = require("./models/NewProduct");
+
 
 const start = async () => {
     try {
@@ -74,12 +74,11 @@ start();
 
 cron.schedule('0 0 * * *', async () => {
     try {
-        await Catalog.deleteMany({})
-        await ChildProduct.deleteMany({})
-        await Product.deleteMany({})
-        await NewProduct.deleteMany({})
-        console.log('ochirildi')
+        resetAllModels()
     } catch (error) {
         console.error('Elementlarni o\'chirishda xatolik:', error);
     }
 });
+
+
+
