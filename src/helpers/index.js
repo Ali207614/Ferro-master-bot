@@ -228,7 +228,7 @@ function splitLongText(text, maxLength) {
 
 async function sendLongMessage(bot, chat_id, desc) {
     let textIdList = [];
-    let longText = desc.repeat(15);
+    let longText = desc;
     longText = escapeMarkdown(longText);
 
     if (longText.length > MAX_LENGTH) {
