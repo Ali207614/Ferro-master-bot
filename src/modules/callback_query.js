@@ -3,7 +3,7 @@ const path = require('path')
 const { bot, rolesList, emoji, uncategorizedProduct } = require("../config")
 const ferroController = require("../controllers/ferroController")
 const { generateTestResultExcel } = require("../excel")
-const { infoUser, updateUser, deleteUser, sendMessageHelper, updateCustom, updateBack, updateStep, executeUpdateFn, updateThenFn, sleepNow, updateQuestion, filterAndShuffleQuestions, saveTextToFile } = require("../helpers")
+const { infoUser, updateUser, deleteUser, sendMessageHelper, updateCustom, updateBack, updateStep, executeUpdateFn, updateThenFn, sleepNow, updateQuestion, filterAndShuffleQuestions, saveTextToFile, sendLongMessage } = require("../helpers")
 const { empDynamicBtn } = require("../keyboards/function_keyboards")
 const { dataConfirmBtnEmp } = require("../keyboards/inline_keyboards")
 const { mainMenuByRoles, option, adminBtn } = require("../keyboards/keyboards")
@@ -1476,9 +1476,11 @@ let userCallback = {
                     await bot.deleteMessage(chat_id, user.custom?.productMessageId);
                     await updateCustom(chat_id, { productMessageId: '' })
                 }
-                if (get(user, 'custom.textId')) {
-                    await bot.deleteMessage(chat_id, user.custom?.textId);
-                    await updateCustom(chat_id, { textId: '' })
+                if (get(user, 'custom.textIdList', []).length) {
+                    get(user, 'custom.textIdList', []).forEach(async item => {
+                        await bot.deleteMessage(chat_id, item);
+                    })
+                    await updateCustom(chat_id, { textIdList: [] })
                 }
             } catch (error) {
                 console.error('Xabarni o\'chirishda xatolik:', error.message);
@@ -1743,33 +1745,31 @@ let userCallback = {
 
             let photoUrl = `${process.env.ferro_api}/file/thumbnail/square/1280/` + get(childProduct, 'parentProduct.photos[0].photo.url', '');
             let text = generateProductText(childProduct)
-            let desc = escapeMarkdown(get(childProduct, 'description.textUzLat', 'Noma\'lum'));
-            const fileName = `${get(childProduct, 'name.textUzLat', '') || ''}.txt`; // Fayl nomi
-            const folderPath = path.join(process.cwd(), 'src', 'documents');
-            const textFilePath = saveTextToFile(desc, fileName, folderPath);
+            let desc = get(childProduct, 'description.textUzLat', 'Noma\'lum');
             let updateId;
-            let textId;
+            let textIdList = [];
             if (get(user, 'custom.productMessageId')) {
                 bot.deleteMessage(chat_id, get(user, 'custom.productMessageId'))
             }
-            if (get(user, 'custom.textId')) {
-                bot.deleteMessage(chat_id, get(user, 'custom.textId'))
+            if (get(user, 'custom.textIdList', []).length) {
+                get(user, 'custom.textIdList', []).forEach(async item => {
+                    await bot.deleteMessage(chat_id, item);
+                })
             }
             if (get(childProduct, 'parentProduct.photos[0].photo.url', '')) {
                 updateId = await bot.sendPhoto(chat_id, photoUrl, {
                     caption: text,
                     parse_mode: 'MarkdownV2',
                 });
-                if (get(childProduct, 'description.textUzLat', '')) {
-                    textId = await bot.sendDocument(chat_id, textFilePath)
-                }
             } else {
                 updateId = await sendMessageHelper(chat_id, text, { parse_mode: 'MarkdownV2' });
-                if (get(childProduct, 'description.textUzLat', '')) {
-                    textId = await bot.sendDocument(chat_id, textFilePath)
-                }
             }
-            updateCustom(chat_id, { productMessageId: updateId.message_id, textId: textId.message_id });
+
+            if (get(childProduct, 'description.textUzLat', '')) {
+                textIdList = await sendLongMessage(bot, chat_id, desc)
+            }
+            console.log(textIdList)
+            updateCustom(chat_id, { productMessageId: updateId.message_id, textIdList });
             return
         },
         middleware: async ({ chat_id, id }) => {

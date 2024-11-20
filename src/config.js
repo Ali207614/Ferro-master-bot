@@ -62,16 +62,16 @@ async function resetAllModels() {
     await NewProduct.deleteMany({})
 
 
-    let folderPath = path.join(process.cwd(), 'src', 'documents')
-    const files = await fs.readdir(folderPath);
+    // let folderPath = path.join(process.cwd(), 'src', 'documents')
+    // const files = await fs.readdir(folderPath);
 
-    for (const file of files) {
-        const filePath = path.join(folderPath, file);
+    // for (const file of files) {
+    //     const filePath = path.join(folderPath, file);
 
-        if (path.extname(file) === '.txt') {
-            await fs.unlink(filePath);
-        }
-    }
+    //     if (path.extname(file) === '.txt') {
+    //         await fs.unlink(filePath);
+    //     }
+    // }
 }
 
 // let uncategorizedProduct = [1003947, 1002442]

@@ -7,6 +7,7 @@ const moment = require('moment');
 const Question = require("../models/Question");
 const { empDynamicBtn } = require("../keyboards/function_keyboards");
 const { dataConfirmBtnEmp } = require("../keyboards/inline_keyboards");
+const { escapeMarkdown } = require("../keyboards/text");
 
 
 function formatterCurrency(
@@ -209,9 +210,41 @@ function filterAndShuffleQuestions(questions, excludedIds = []) {
 
     return filteredQuestions;
 }
+const MAX_LENGTH = 4096;
 
+function splitLongText(text, maxLength) {
+    const parts = [];
+    while (text.length > maxLength) {
+        let splitIndex = text.lastIndexOf(' ', maxLength);
+        if (splitIndex === -1) {
+            splitIndex = maxLength;
+        }
+        parts.push(text.slice(0, splitIndex));
+        text = text.slice(splitIndex).trim();
+    }
+    parts.push(text);
+    return parts;
+}
 
+async function sendLongMessage(bot, chat_id, desc) {
+    let textIdList = [];
+    let longText = desc.repeat(15);
+    longText = escapeMarkdown(longText);
 
+    if (longText.length > MAX_LENGTH) {
+        const parts = splitLongText(longText, MAX_LENGTH);
+
+        for (const part of parts) {
+            await sleepNow(300);
+            let descTextId = await bot.sendMessage(chat_id, part, { parse_mode: 'MarkdownV2' });
+            textIdList.push(descTextId.message_id);
+        }
+    } else {
+        let descTextId = await bot.sendMessage(chat_id, longText, { parse_mode: 'MarkdownV2' });
+        textIdList.push(descTextId.message_id);
+    }
+    return textIdList;
+}
 
 module.exports = {
     parseDate,
@@ -231,4 +264,5 @@ module.exports = {
     sleepNow,
     filterAndShuffleQuestions,
     saveTextToFile,
+    sendLongMessage
 }
