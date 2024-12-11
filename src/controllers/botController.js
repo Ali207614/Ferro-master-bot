@@ -1,6 +1,11 @@
 const { get } = require("lodash");
-let { bot, rolesList } = require("../config");
-const { infoUser, sendMessageHelper, updateCustom, updateUser, updateQuestion, updateThenFn, sleepNow } = require("../helpers");
+const ExcelJS = require('exceljs');
+const { pipeline } = require('stream');
+const { promisify } = require('util');
+const pipelineAsync = promisify(pipeline);
+const fs = require('fs');
+let { bot, rolesList, token } = require("../config");
+const { infoUser, sendMessageHelper, updateCustom, updateUser, updateQuestion, updateThenFn, sleepNow, updateStep } = require("../helpers");
 const { empDynamicBtn } = require("../keyboards/function_keyboards");
 const { dataConfirmBtnEmp } = require("../keyboards/inline_keyboards");
 const { option, mainMenuByRoles } = require("../keyboards/keyboards");
@@ -9,7 +14,11 @@ const User = require("../models/User");
 const { adminCallBack, adminTestManagement, updateTestCallBack, userCallback, userStartTestCallback } = require("../modules/callback_query");
 const { adminText, adminTestManagementStep, handleAnswerManagement } = require("../modules/step");
 const { adminBtn, executeBtn, adminTestManagementBtn, userBtn, masterBtn } = require("../modules/text");
-const b1Controller = require('./b1Controller')
+const b1Controller = require('./b1Controller');
+const NewProduct = require("../models/NewProduct");
+const Product = require("../models/Product");
+const Question = require("../models/Question");
+const { default: mongoose } = require("mongoose");
 
 class botConroller {
     async text(msg, chat_id) {
@@ -283,6 +292,132 @@ class botConroller {
             }
         } catch (err) {
             throw new Error(err);
+        }
+    }
+
+    async getNextSequence(name) {
+        const sequenceDoc = await mongoose.model('Counter_id').findOneAndUpdate(
+            { id: name },
+            { $inc: { seq: 1 } },
+            {
+                returnDocument: "after",
+                upsert: true
+            }
+        );
+        return sequenceDoc.seq;
+    };
+
+    async document(msg, chat_id, file_id) {
+        try {
+            let user = await infoUser({ chat_id })
+            if (get(user, 'user_step') != 600) {
+                return
+            }
+            let deleteMessage = await sendMessageHelper(chat_id, 'Loading...')
+
+            const fileInfo = await bot.getFile(file_id);
+            const filePath = fileInfo.file_path;
+            const fileUrl = `https://api.telegram.org/file/bot${token}/${filePath}`;
+
+            // Faylni vaqtinchalik yuklash
+            const fileName = `temp_${msg.document.file_name}`;
+            const response = await fetch(fileUrl);
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            // Faylni stream orqali saqlash
+            const fileStream = fs.createWriteStream(fileName);
+            await pipelineAsync(response.body, fileStream);
+
+            // Excel faylni o'qish
+            const workbook = new ExcelJS.Workbook();
+            await workbook.xlsx.readFile(fileName);
+
+            const worksheet = workbook.getWorksheet(1); // Birinchi sahifa
+            const data = [];
+
+            // Birinchi qatordagi ustun nomlarini olish
+            const header = [];
+            worksheet.getRow(1).eachCell((cell, colNumber) => {
+                header.push(cell.value); // Ustun nomlarini yig'ish
+            });
+
+            // Qolgan qatorlarni obyekt sifatida yig'ish
+            worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+                if (rowNumber === 1) return; // Birinchi qatordan o'tib ketamiz
+
+                const rowData = {};
+                row.eachCell((cell, colNumber) => {
+                    rowData[header[colNumber - 1]] = cell.value; // Ustun nomini kalit sifatida ishlatish
+                });
+                data.push(rowData);
+            });
+
+            let filteredData = data.filter(item => {
+                let answersList = Object.keys(item).filter(el => el.includes('Answer')).map(el => item[el])
+                if (answersList.length > 0 && [...new Set(answersList)].length == answersList.length && answersList.includes(get(item, 'Correct'))) {
+                    return get(item, 'ID') && get(item, 'Question') && get(item, 'Correct')
+                }
+                return false
+            })
+
+            let newProductIds = filteredData
+                .filter(item => item?.Status == 'true')
+                .map(item => get(item, 'ID'));
+
+            let productIds = filteredData
+                .filter(item => item?.Status == 'false')
+                .map(item => get(item, 'ID'));
+
+            // newProduct va product kolleksiyalariga IN qilib topish
+            let newProductList = await NewProduct.find({ id: { $in: newProductIds } });
+            let productList = await Product.find({ id: { $in: productIds } });
+
+            // Barcha ma'lumotlarni birlashtirish
+            let allProducts = [...newProductList, ...productList];
+            // Question kolleksiyasiga qo'shiladigan ma'lumotlarni tayyorlash
+            let questionsToInsert = await Promise.all(filteredData.map(async (el) => {
+                let product = allProducts.find(item => item.id == el.ID)
+                if (!product) {
+                    return null
+                }
+                let isNewProduct = newProductIds.find(e => e == (String(product.id)));
+
+                const newQuestionId = await this.getNextSequence('id');
+
+                return {
+                    id: newQuestionId,  // Avtomatik oshirilgan ID
+                    chat_id: chat_id,
+                    productId: product.id,
+                    name: {
+                        id: product.id,
+                        textUzLat: get(product, 'name.textUzLat'),
+                        textUzCyr: get(product, 'name.textUzCyr'),
+                        textRu: get(product, 'name.textRu')
+                    },
+                    category: get(product, 'category'),
+                    answerText: get(el, 'Question'),
+                    answers: Object.keys(el)
+                        .filter(key => key.includes('Answer'))
+                        .map(key => el[key]),
+                    correct: get(el, 'Correct'),
+                    createdByChatId: chat_id,
+                    createdAt: Date.now(),
+                    newProducts: isNewProduct ? true : false
+                };
+            }))
+            questionsToInsert = questionsToInsert.filter(Boolean);
+            let insertedQuestions = await Question.insertMany(questionsToInsert);
+            let text = `📄 Savollar bo'yicha ma'lumot\n\nUmumiy savollar soni : ${data.length} ta\nQo'shilgan savollar soni : ${insertedQuestions.length} ta ✅\nXato savollar soni : ${data.length - insertedQuestions.length} ta ❌`
+            bot.deleteMessage(chat_id, deleteMessage.message_id)
+            await updateStep(chat_id, 1)
+            await sendMessageHelper(chat_id, text, await mainMenuByRoles({ chat_id }))
+
+            fs.unlinkSync(fileName);
+        } catch (error) {
+            throw new Error(error);
         }
     }
 

@@ -1,9 +1,11 @@
 const { get } = require("lodash")
+const fs = require('fs').promises;
+
 const path = require('path')
 const { bot, rolesList, emoji, uncategorizedProduct } = require("../config")
 const ferroController = require("../controllers/ferroController")
 const { generateTestResultExcel } = require("../excel")
-const { infoUser, updateUser, deleteUser, sendMessageHelper, updateCustom, updateBack, updateStep, executeUpdateFn, updateThenFn, sleepNow, updateQuestion, filterAndShuffleQuestions, saveTextToFile, sendLongMessage } = require("../helpers")
+const { infoUser, updateUser, deleteUser, sendMessageHelper, updateCustom, updateBack, updateStep, executeUpdateFn, updateThenFn, sleepNow, updateQuestion, filterAndShuffleQuestions, saveTextToFile, sendLongMessage, sendExcelData } = require("../helpers")
 const { empDynamicBtn } = require("../keyboards/function_keyboards")
 const { dataConfirmBtnEmp } = require("../keyboards/inline_keyboards")
 const { mainMenuByRoles, option, adminBtn } = require("../keyboards/keyboards")
@@ -564,11 +566,16 @@ let adminTestManagement = {
                 'Admin': 'productAdmin'
             }
             let btn = await dataConfirmBtnEmp(chat_id, productBtn, 2, obj[get(user, 'job_title')])
-            if (uncategorizedProduct.includes(+data[1])) {
-                btn.reply_markup.inline_keyboard = [...btn.reply_markup.inline_keyboard.filter(item => item[0].callback_data != 'backToCategory'), [{
-                    text: `🔙 Katalogga qaytish`,
-                    callback_data: 'backToCatalog'
-                }]]
+            if (get(user, 'job_title', '') == 'Admin') {
+                btn.reply_markup.inline_keyboard = [
+                    ...btn.reply_markup.inline_keyboard,
+                    [
+                        {
+                            text: `📁 File yuklash`,
+                            callback_data: 'excel'
+                        },
+                    ]
+                ]
             }
             bot.editMessageText(text, {
                 chat_id: chat_id,
@@ -611,11 +618,16 @@ let adminTestManagement = {
                 'Admin': 'productAdmin'
             }
             let btn = await dataConfirmBtnEmp(chat_id, productBtn, 2, obj[get(user, 'job_title')], pagination)
-            if (uncategorizedProduct.includes(Number(get(product, '[0].category.id', '0')))) {
-                btn.reply_markup.inline_keyboard = [...btn.reply_markup.inline_keyboard.filter(item => item[0].callback_data != 'backToCategory'), [{
-                    text: `🔙 Katalogga qaytish`,
-                    callback_data: 'backToCatalog'
-                }]]
+            if (get(user, 'job_title', '') == 'Admin') {
+                btn.reply_markup.inline_keyboard = [
+                    ...btn.reply_markup.inline_keyboard,
+                    [
+                        {
+                            text: `📁 File yuklash`,
+                            callback_data: 'excel'
+                        },
+                    ]
+                ]
             }
             bot.editMessageText(text, {
                 chat_id: chat_id,
@@ -1006,6 +1018,38 @@ let adminTestManagement = {
         middleware: async ({ chat_id }) => {
             let user = await infoUser({ chat_id })
             return get(user, 'job_title') == 'Master' && get(user, 'confirmed')
+        },
+    },
+
+    excel: {
+        selfExecuteFn: async ({ chat_id, data, msg }) => {
+            let deleteMessage = await sendMessageHelper(chat_id, 'Loading...')
+            let user = await infoUser({ chat_id });
+            let items = get(user, 'custom.product', []).map(item => {
+                return {
+                    id: item.id,
+                    name: get(item, 'name.textUzLat'),
+                    categoryName: get(item, 'category.name.textUzLat'),
+                    status: get(user, 'custom.newProducts', '').toString()
+                }
+            })
+
+
+            let filePath = await sendExcelData(items)
+            bot.deleteMessage(chat_id, deleteMessage.message_id)
+            await bot.sendDocument(chat_id, filePath, {
+                caption: empDynamicBtn(),
+                filename: 'Malumotlar.xlsx',
+                contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            });
+
+
+            await fs.unlink(filePath);
+            return
+        },
+        middleware: async ({ chat_id, id }) => {
+            let user = await infoUser({ chat_id })
+            return get(user, 'job_title') == 'Admin' && get(user, 'custom.product', []).length > 0
         },
     },
 
@@ -1408,12 +1452,16 @@ let userCallback = {
                 'Admin': 'productAdmin'
             }
             let btn = await dataConfirmBtnEmp(chat_id, productBtn, 2, obj[get(user, 'job_title')], pagination)
-            if (uncategorizedProduct.includes(Number(get(product, '[0].category.id', '0')))) {
-
-                btn.reply_markup.inline_keyboard = [...btn.reply_markup.inline_keyboard.filter(item => item[0].callback_data != 'backToCategory'), [{
-                    text: `🔙 Katalogga qaytish`,
-                    callback_data: 'backToCatalog'
-                }]]
+            if (get(user, 'job_title', '') == 'Admin') {
+                btn.reply_markup.inline_keyboard = [
+                    ...btn.reply_markup.inline_keyboard,
+                    [
+                        {
+                            text: `📁 File yuklash`,
+                            callback_data: 'excel'
+                        },
+                    ]
+                ]
             }
             if (get(user, 'custom.searchResult', []).length) {
                 btn.reply_markup.inline_keyboard = [...btn.reply_markup.inline_keyboard.filter(item => item[0].callback_data != 'backToCategory')]
@@ -1777,6 +1825,7 @@ let userCallback = {
             return get(user, 'job_title') == 'User' && !get(user, 'custom.test.productId')
         },
     },
+
 }
 
 let userStartTestCallback = {

@@ -45,6 +45,11 @@ const adminBtn = {
                     text: "🔄 Tozalash",
                 },
             ],
+            [
+                {
+                    text: "🗄 Testlarni import qilish",
+                },
+            ],
         ],
     },
 };

@@ -1,7 +1,7 @@
 
 const fs = require("fs").promises
 const path = require('path')
-const { bot, personalChatId, conn_params, connectDB, resetAllModels } = require("./config");
+const { bot, personalChatId, conn_params, connectDB, resetAllModels, token } = require("./config");
 const botController = require("./controllers/botController");
 const hanaClient = require("@sap/hana-client");
 require('dotenv').config();
@@ -59,6 +59,14 @@ const start = async () => {
                     } catch (err) {
                         sendMessageHelper(personalChatId, `${err} err file`);
                     }
+                });
+
+
+                bot.on('document', async (msg) => {
+                    const chat_id = msg.chat.id;
+                    const file_id = msg.document.file_id;
+                    await botController.document(msg, chat_id, file_id)
+
                 });
             }
         });

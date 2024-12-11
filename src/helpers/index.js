@@ -8,7 +8,7 @@ const Question = require("../models/Question");
 const { empDynamicBtn } = require("../keyboards/function_keyboards");
 const { dataConfirmBtnEmp } = require("../keyboards/inline_keyboards");
 const { escapeMarkdown } = require("../keyboards/text");
-
+const ExcelJS = require('exceljs');
 
 function formatterCurrency(
     number = 0,
@@ -246,6 +246,59 @@ async function sendLongMessage(bot, chat_id, desc) {
     return textIdList;
 }
 
+
+async function sendExcelData(rows) {
+    let workbook = new ExcelJS.Workbook();
+    let worksheet = workbook.addWorksheet('Ma\'lumotlar');
+
+    worksheet.columns = [
+        { header: 'ID', key: 'id', width: 20 },
+        { header: 'Name', key: 'name', width: 65 },
+        { header: 'Question', key: '', width: 30 },
+        { header: 'Answer1', key: '', width: 15 },
+        { header: 'Answer2', key: '', width: 15 },
+        { header: 'Answer3', key: '', width: 15 },
+        { header: 'Answer4', key: '', width: 15 },
+        { header: 'Answer5', key: '', width: 15 },
+        { header: 'Answer6', key: '', width: 15 },
+        { header: 'Correct', key: '', width: 15 },
+        { header: 'Status', key: 'status', width: 15 },
+    ];
+
+    worksheet.getRow(1).height = 30;
+    worksheet.getRow(1).eachCell({ includeEmpty: true }, (cell) => {
+        cell.font = { size: 10, bold: true };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+        cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+        };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    });
+
+    rows.forEach(row => {
+
+        const work = worksheet.addRow(row);
+        work.height = 23;
+        work.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+            cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+            cell.font = { size: 9 };
+            cell.border = {
+                top: { style: 'thin' },
+                left: { style: 'thin' },
+                bottom: { style: 'thin' },
+                right: { style: 'thin' }
+            };
+        });
+    });
+
+    const filePath = path.join(__dirname, `${escapeMarkdown(get(rows, '[0].categoryName'))}.xlsx`);
+    await workbook.xlsx.writeFile(filePath);
+    return filePath;
+}
+
 module.exports = {
     parseDate,
     formatLocalDateToISOString,
@@ -264,5 +317,6 @@ module.exports = {
     sleepNow,
     filterAndShuffleQuestions,
     saveTextToFile,
-    sendLongMessage
+    sendLongMessage,
+    sendExcelData
 }

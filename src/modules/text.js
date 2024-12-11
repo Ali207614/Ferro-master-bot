@@ -152,6 +152,21 @@ let adminBtn = {
             return get(user, 'job_title') == 'Admin' && get(user, 'confirmed')
         },
     },
+    "🗄 Testlarni import qilish": {
+        selfExecuteFn: async ({ chat_id }) => {
+            updateBack(chat_id, {
+                text: `Asosiy menu`,
+                btn: await mainMenuByRoles({ chat_id }),
+                step: 1
+            })
+            sendMessageHelper(chat_id, `Excel file jo'nating`, empDynamicBtn())
+            await updateStep(chat_id, 600)
+        },
+        middleware: async ({ chat_id }) => {
+            let user = await infoUser({ chat_id })
+            return get(user, 'job_title') == 'Admin' && get(user, 'confirmed')
+        },
+    },
 }
 
 let adminTestManagementBtn = {

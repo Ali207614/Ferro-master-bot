@@ -77,7 +77,7 @@ async function resetAllModels() {
 // let uncategorizedProduct = [1003947, 1002442]
 let uncategorizedProduct = []
 
-module.exports = { bot, personalChatId, conn_params, db, connectDB, rolesList, emojiWithName, emoji, uncategorizedProduct, resetAllModels }
+module.exports = { bot, personalChatId, conn_params, db, connectDB, rolesList, emojiWithName, emoji, uncategorizedProduct, resetAllModels, token }
 
 
 // mongo db ga ulanish
