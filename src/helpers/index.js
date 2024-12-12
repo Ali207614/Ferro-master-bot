@@ -252,6 +252,7 @@ async function sendExcelData(rows) {
     let worksheet = workbook.addWorksheet('Ma\'lumotlar');
 
     worksheet.columns = [
+        { header: 'No', key: 'i', width: 10 },
         { header: 'ID', key: 'id', width: 20 },
         { header: 'Name', key: 'name', width: 65 },
         { header: 'Question', key: '', width: 30 },

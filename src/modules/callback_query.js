@@ -1025,8 +1025,9 @@ let adminTestManagement = {
         selfExecuteFn: async ({ chat_id, data, msg }) => {
             let deleteMessage = await sendMessageHelper(chat_id, 'Loading...')
             let user = await infoUser({ chat_id });
-            let items = get(user, 'custom.product', []).map(item => {
+            let items = get(user, 'custom.product', []).map((item, i) => {
                 return {
+                    i: i + 1,
                     id: item.id,
                     name: get(item, 'name.textUzLat'),
                     categoryName: get(item, 'category.name.textUzLat'),
@@ -1816,7 +1817,6 @@ let userCallback = {
             if (get(childProduct, 'description.textUzLat', '')) {
                 textIdList = await sendLongMessage(bot, chat_id, desc)
             }
-            console.log(textIdList)
             updateCustom(chat_id, { productMessageId: updateId.message_id, textIdList });
             return
         },

@@ -19,7 +19,7 @@ const NewProduct = require("../models/NewProduct");
 const Product = require("../models/Product");
 const Question = require("../models/Question");
 const { default: mongoose } = require("mongoose");
-
+const fetch = require('node-fetch')
 class botConroller {
     async text(msg, chat_id) {
         try {
@@ -354,14 +354,33 @@ class botConroller {
                 });
                 data.push(rowData);
             });
-
+            let wrongAnswers = []
             let filteredData = data.filter(item => {
-                let answersList = Object.keys(item).filter(el => el.includes('Answer')).map(el => item[el])
-                if (answersList.length > 0 && [...new Set(answersList)].length == answersList.length && answersList.includes(get(item, 'Correct'))) {
+                let answersList = Object.keys(item).filter(el => el.includes('Answer')).map(el => (item[el] || '').toString().trim())
+                if (answersList.length > 0 && [...new Set(answersList)].length == answersList.length && answersList.includes((get(item, 'Correct', '') || '').toString().trim())) {
                     return get(item, 'ID') && get(item, 'Question') && get(item, 'Correct')
+                }
+                if (answersList.length == 0) {
+                    wrongAnswers.push({ ID: item?.ID || '', No: item?.No || 0, message: "Javoblar mavjud emas" })
+                }
+                else if ([...new Set(answersList)].length != answersList.length) {
+                    wrongAnswers.push({ ID: item?.ID || '', No: item?.No || 0, message: "Javoblar bir xil" })
+                }
+                else if (!answersList.includes((get(item, 'Correct', '') || '').toString().trim())) {
+                    wrongAnswers.push({ ID: item?.ID || '', No: item?.No || 0, message: "To'gri javob yo'q" })
+                }
+                else if (!get(item, 'ID')) {
+                    wrongAnswers.push({ ID: item?.ID || '', No: item?.No || 0, message: "ID majvud emas" })
+                }
+                else if (!get(item, 'Question')) {
+                    wrongAnswers.push({ ID: item?.ID || '', No: item?.No || 0, message: "Savol majvud emas" })
+                }
+                else {
+                    wrongAnswers.push({ ID: item?.ID || '', No: item?.No || 0, message: "❌" })
                 }
                 return false
             })
+
 
             let newProductIds = filteredData
                 .filter(item => item?.Status == 'true')
@@ -410,7 +429,11 @@ class botConroller {
             }))
             questionsToInsert = questionsToInsert.filter(Boolean);
             let insertedQuestions = await Question.insertMany(questionsToInsert);
-            let text = `📄 Savollar bo'yicha ma'lumot\n\nUmumiy savollar soni : ${data.length} ta\nQo'shilgan savollar soni : ${insertedQuestions.length} ta ✅\nXato savollar soni : ${data.length - insertedQuestions.length} ta ❌`
+            let wrongTextList = ``
+            wrongAnswers.forEach((item, i) => {
+                wrongTextList += `ID: ${get(item, 'ID', '')} || Qator: ${get(item, 'No', '')} || Sabab: ${get(item, 'message', '')}\n`
+            })
+            let text = `📄 Savollar bo'yicha ma'lumot\n\nUmumiy savollar soni : ${data.length} ta\nQo'shilgan savollar soni : ${insertedQuestions.length} ta ✅\nXato savollar soni : ${data.length - insertedQuestions.length} ta ❌\n\n${wrongTextList}`
             bot.deleteMessage(chat_id, deleteMessage.message_id)
             await updateStep(chat_id, 1)
             await sendMessageHelper(chat_id, text, await mainMenuByRoles({ chat_id }))

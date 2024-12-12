@@ -17,7 +17,6 @@ class ferroController {
             }
             return response?.data
         } catch (error) {
-            console.log(error, ' bu err')
             throw new Error('API request error:', error);
         }
     }
